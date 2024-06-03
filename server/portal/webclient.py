@@ -1,4 +1,11 @@
 """
+-------------------
+0xDEADFED5 edit:
+This is https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py with the addition
+of the else clause in send_text at line 285.  Much of the code in send_text is unreachable, but I wanted
+to leave the original code for reference
+License: https://github.com/evennia/evennia/blob/main/LICENSE.txt (BSD 3-Clause License)
+-------------------
 Webclient based on websockets.
 
 This implements a webclient with WebSockets (http://en.wikipedia.org/wiki/WebSocket)
