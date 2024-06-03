@@ -1,0 +1,33 @@
+## xterm.js webclient for Evennia
+This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/tree/main) game with the [xterm.js](https://github.com/xtermjs/xterm.js) terminal emulator.
+This is based on a modified and updated [fluffos](https://github.com/fluffos/fluffos/tree/master/src/www) webclient.
+
+### Features
+- Really fast, does terminal stuff
+- Up arrow for command history
+- All files are local, no internet required
+- Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
+
+### Notes
+- There's mobile-specific code that I haven't actually been able to test, the font size might need to be adjusted
+- There's a stray websocket command `["logged_in", [], {"options": {}}]` that gets printed after login, not sure how to fix
+- Not screenreader compatible, unlike the OG webclient
+
+### Installation
+Copy this entire folder structure to your Evennia game folder.
+Add this line to your settings.py:
+`WEBSOCKET_PROTOCOL_CLASS = "server.portal.webclient.WebSocketClient"`
+
+### File sources
+addon-attach.js = npm install --save @xterm/addon-attach
+addon-fit.js = npm install --save @xterm/addon-fit
+addon-unicode11.js = npm install --save @xterm/addon-unicode11
+addon-webgl.js = npm install --save @xterm/addon-webgl
+webclient.js = based on https://github.com/fluffos/fluffos/tree/master/src/www/example.js
+FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
+fontobserver.js = https://github.com/fluffos/fluffos/tree/master/src/www/fontobserver.js
+base.html = adapted from: https://github.com/evennia/evennia/blob/main/evennia/web/templates/webclient/base.html
+jquery-3.7.1.min.js = https://code.jquery.com/jquery-3.7.1.min.js
+normalize.css = https://github.com/fluffos/fluffos/tree/master/src/www/normalize.css
+xterm.css = npm install @xterm/xterm
+xterm.js = ""

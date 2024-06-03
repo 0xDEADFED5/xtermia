@@ -1,0 +1,21 @@
+{% extends "webclient/base.html" %}
+
+<!-- Django-template blocks available for overloading:
+    - connecting     - custom connect messages
+    - jquery_import  - for changing to a local jquery version
+    - guilib_import  - for using your own gui lib
+-->
+
+{% block client %}
+
+<!-- Basic toolbar -->
+<div id="toolbar"></div>
+
+<div id="container" style="position:relative; display: flex; flex-direction: column; height: 100vh; margin: 0; padding: 0;">
+  <div id="terminal" style="flex: 1"></div>
+  <input id="command" style="height: 15px; width: 100%" />
+</div>
+
+{% endblock %}
+{% block scripts %}
+{% endblock %}
