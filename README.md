@@ -23,6 +23,7 @@ Add this line to your `mygame/server/conf/settings.py`:
 - addon-fit.js = npm install --save @xterm/addon-fit
 - addon-unicode11.js = npm install --save @xterm/addon-unicode11
 - addon-webgl.js = npm install --save @xterm/addon-webgl
+- bootstrap.min.css = https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css
 - webclient.js = based on https://github.com/fluffos/fluffos/tree/master/src/www/example.js
 - FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
 - fontobserver.js = https://github.com/fluffos/fluffos/tree/master/src/www/fontobserver.js
