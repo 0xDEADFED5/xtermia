@@ -26,7 +26,6 @@ Add this line to your mygame/server/conf/settings.py:
 - addon-unicode11.js = npm install --save @xterm/addon-unicode11
 - addon-webgl.js = npm install --save @xterm/addon-webgl
 - base.html = adapted from: https://github.com/evennia/evennia/blob/main/evennia/web/templates/webclient/base.html
-- bootstrap.min.css = https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css
 - FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
 - fontobserver.js = https://github.com/fluffos/fluffos/tree/master/src/www/fontobserver.js
 - jquery-3.7.1.min.js = https://code.jquery.com/jquery-3.7.1.min.js
