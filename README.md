@@ -22,7 +22,6 @@ Add this line to your mygame/server/conf/settings.py:
 `WEBSOCKET_PROTOCOL_CLASS = "server.portal.webclient.WebSocketClient"`
 
 ### File sources
-- addon-attach.js = npm install --save @xterm/addon-attach
 - addon-fit.js = npm install --save @xterm/addon-fit
 - addon-unicode11.js = npm install --save @xterm/addon-unicode11
 - addon-webgl.js = npm install --save @xterm/addon-webgl
