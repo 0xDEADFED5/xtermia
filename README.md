@@ -14,10 +14,9 @@ There are 2 example commands "testaudio" and "pauseaudio" which show how to play
 - Not screenreader compatible, but the OG webclient is
 
 ### Installation
-- Backup your existing game folder.
-- Copy this entire folder structure to a **fresh** Evennia game folder.
-- NOTE: This will overwrite your current game's default_cmdsets.py
-
+Backup your existing game folder.
+Copy this entire folder structure to your Evennia "mygame" game folder.
+NOTE: This will overwrite your current game's default_cmdsets.py
 Add this line to your mygame/server/conf/settings.py:
 
 `WEBSOCKET_PROTOCOL_CLASS = "server.portal.webclient.WebSocketClient"`
