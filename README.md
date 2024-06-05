@@ -15,6 +15,9 @@ This is based on a modified and updated [fluffos](https://github.com/fluffos/flu
 
 ### Installation
 Copy this entire folder structure to your Evennia game folder.
+NOTE: This will overwrite your current game's typeclasses/accounts.py!
+This shouldn't be an issue for most people, but if you have a customized accounts.py of your own,
+just comment out the call to `session.msg` from your `at_post_login` function instead.
 
 Add this line to your mygame/server/conf/settings.py:
 
