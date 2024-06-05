@@ -1,6 +1,7 @@
 ## xterm.js webclient for Evennia
 This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/tree/main) game with the [xterm.js](https://github.com/xtermjs/xterm.js) terminal emulator.
 This is based on a modified and updated [fluffos](https://github.com/fluffos/fluffos/tree/master/src/www) webclient.
+There are 2 example commands "testaudio" and "pauseaudio" which show how to play sounds/music in the webclient.
 
 ### Features
 - Really fast, does terminal stuff
@@ -13,10 +14,9 @@ This is based on a modified and updated [fluffos](https://github.com/fluffos/flu
 - Not screenreader compatible, but the OG webclient is
 
 ### Installation
-Copy this entire folder structure to your Evennia game folder.
-NOTE: This will overwrite your current game's typeclasses/accounts.py!
-This shouldn't be an issue for most people, but if you have a customized accounts.py of your own,
-just comment out the call to `session.msg` from your `at_post_login` function instead.
+- Backup your existing game folder.
+- Copy this entire folder structure to a **fresh** Evennia game folder.
+- NOTE: This will overwrite your current game's default_cmdsets.py
 
 Add this line to your mygame/server/conf/settings.py:
 

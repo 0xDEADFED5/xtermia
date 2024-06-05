@@ -1,10 +1,6 @@
 """
 -------------------
-0xDEADFED5 edit:
-This is https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py with the addition
-of the else clause in send_text at line 285.  Much of the code in send_text is unreachable, but I wanted
-to leave the original code for reference
-License: https://github.com/evennia/evennia/blob/main/LICENSE.txt (BSD 3-Clause License)
+modified https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py with the addition
 -------------------
 Webclient based on websockets.
 
@@ -282,11 +278,6 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
             text = args[0]
             if text is None:
                 return
-            else:
-                # webclient mod to send ANSI to xterm.js
-                text = parse_ansi(text, strip_ansi=False, xterm256=True, mxp=False)
-                self.sendLine(text + "\n")
-                return
         else:
             return
 
@@ -304,14 +295,7 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
             text = parse_ansi(text, strip_ansi=True, xterm256=False, mxp=False)
             text = _RE_SCREENREADER_REGEX.sub("", text)
         cmd = "prompt" if prompt else "text"
-        if raw:
-            if client_raw:
-                args[0] = text
-            else:
-                args[0] = html.escape(text)  # escape html!
-        else:
-            args[0] = parse_html(text, strip_ansi=nocolor)
-
+        args[0] = parse_ansi(text, strip_ansi=False, xterm256=False, mxp=False) + "\n"
         # send to client on required form [cmdname, args, kwargs]
         self.sendLine(json.dumps([cmd, args, kwargs]))
 

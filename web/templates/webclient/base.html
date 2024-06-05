@@ -11,28 +11,27 @@ JQuery available.
 {% load static %}
 <html dir="ltr" lang="en">
   <head>
-	  <!--<style>
+	  <style>
 		body {
+            background-color: black;
 			height: 100%;
-			overflow: hidden;
+			overflow-x: hidden;
 			font-family: 'Fira Code', monospace;
 			font-size: medium;
+
 		}
-	  </style>-->
+	  </style>
     <title> {{game_name}} </title>
-    <meta http-equiv="content-type", content="application/xhtml+xml; charset=UTF-8" />
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=UTF-8" />
     <meta name="author" content="Evennia" />
     <meta name="generator" content="Evennia" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui" />
-    <!-- Bootstrap CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/css/xterm.css" %} />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/css/normalize.css" %} />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/fonts/FiraCode.css" %} />
     {% comment %}
     Allows for loading custom styles without overriding the base site stylesheet
     {% endcomment %}
-    <!-- Custom CSS -->
-    <link rel='stylesheet' type="text/css" media="screen" href={% static "webclient/css/custom.css" %}>
     <link rel="icon" type="image/x-icon" href="/static/website/images/evennia_logo.png" />
     <!-- Import JQuery and warn if there is a problem -->
     {% block jquery_import %}
@@ -77,7 +76,6 @@ JQuery available.
         {% endif %}
     </script>
     <script src={% static "webclient/js/xterm.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/addon-attach.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
 	<script src={% static "webclient/js/addon-fit.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
 	<script src={% static "webclient/js/addon-unicode11.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
 	<script src={% static "webclient/js/addon-webgl.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>

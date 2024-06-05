@@ -58,7 +58,7 @@ function onload() {
   const el_container = document.getElementById('container');
   const el_terminal = document.getElementById('terminal');
   const el_input = document.getElementById('command');
-
+  let audio = new Audio()
   window.addEventListener('scroll', function(e) {
     window.scrollTo(0,0);
     fitAddon.fit();
@@ -90,27 +90,35 @@ function onload() {
   term.open(el_terminal);
   fitAddon.fit();
 
-  var browser = (function (agent) {
+  const browser = (function (agent) {
     "use strict"
     switch (true) {
-        case agent.indexOf("edge") > -1: return "edge";
-        case agent.indexOf("edg") > -1: return "chromium based edge (dev or canary)";
-        case agent.indexOf("opr") > -1 && !!window.opr: return "opera";
-        case agent.indexOf("chrome") > -1 && !!window.chrome: return "chrome";
-        case agent.indexOf("trident") > -1: return "ie";
-        case agent.indexOf("firefox") > -1: return "firefox";
-        case agent.indexOf("safari") > -1: return "safari";
-        default: return "other";
+      case agent.indexOf("edge") > -1:
+        return "edge";
+      case agent.indexOf("edg") > -1:
+        return "chromium based edge (dev or canary)";
+      case agent.indexOf("opr") > -1 && !!window.opr:
+        return "opera";
+      case agent.indexOf("chrome") > -1 && !!window.chrome:
+        return "chrome";
+      case agent.indexOf("trident") > -1:
+        return "ie";
+      case agent.indexOf("firefox") > -1:
+        return "firefox";
+      case agent.indexOf("safari") > -1:
+        return "safari";
+      default:
+        return "other";
     }
-})(window.navigator.userAgent.toLowerCase());
+  })(window.navigator.userAgent.toLowerCase());
   console.log(window.navigator.userAgent.toLowerCase() + "\n" + browser);
-  
-  var wsurl = window.wsurl;
-  var csessid = window.csessid;
-  var cuid = window.cuid;
-  var ws = new WebSocket(wsurl + '?' + csessid + '&' + cuid + '&' + browser);
-  const attachAddon = new AttachAddon.AttachAddon(ws);
-  term.loadAddon(attachAddon);
+
+  const wsurl = window.wsurl;
+  const csessid = window.csessid;
+  const cuid = window.cuid;
+  const ws = new WebSocket(wsurl + '?' + csessid + '&' + cuid + '&' + browser);
+  // const attachAddon = new AttachAddon.AttachAddon(ws);
+  // term.loadAddon(attachAddon);
   el_input.focus();
 
   try {
@@ -124,6 +132,19 @@ function onload() {
       term.write("\033[9999;1H");
       term.write("\r\n======== Connection Lost.\r\n");
       el_input.setAttribute("disabled", "disabled");
+    };
+    ws.onmessage = function (e) {
+      //console.log(e.data);
+      let msg = JSON.parse(e.data);
+      if (msg[0] === 'text') {
+        term.write(msg[1][0]);
+      } else if (msg[0] === 'audio') {
+        audio.pause();
+        audio.src = msg[1][0];
+        audio.play();
+      } else if (msg[0] === 'audiopause') {
+        audio.pause();
+      }
     };
   } catch (exception) {
     alert("<p>Error " + exception);
