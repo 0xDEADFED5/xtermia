@@ -1,6 +1,6 @@
 """
 -------------------
-modified https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py
+modified https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py with the addition
 -------------------
 Webclient based on websockets.
 
@@ -294,8 +294,10 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
             # screenreader mode cleans up output
             text = parse_ansi(text, strip_ansi=True, xterm256=False, mxp=False)
             text = _RE_SCREENREADER_REGEX.sub("", text)
+            args[0] = text
+        else:
+            args[0] = parse_ansi(text, strip_ansi=False, xterm256=False, mxp=False) + "\n"
         cmd = "prompt" if prompt else "text"
-        args[0] = parse_ansi(text, strip_ansi=False, xterm256=False, mxp=False) + "\n"
         # send to client on required form [cmdname, args, kwargs]
         self.sendLine(json.dumps([cmd, args, kwargs]))
 

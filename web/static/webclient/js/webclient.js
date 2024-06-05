@@ -58,7 +58,7 @@ function onload() {
   const el_container = document.getElementById('container');
   const el_terminal = document.getElementById('terminal');
   const el_input = document.getElementById('command');
-  let audio = new Audio()
+  let audio = new Audio();
   window.addEventListener('scroll', function(e) {
     window.scrollTo(0,0);
     fitAddon.fit();
