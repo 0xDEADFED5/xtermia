@@ -10,7 +10,6 @@ This is based on a modified and updated [fluffos](https://github.com/fluffos/flu
 
 ### Notes
 - There's mobile-specific code that I haven't actually been able to test, the font size might need to be adjusted
-- There's a stray websocket command `["logged_in", [], {"options": {}}]` that gets printed after login, not sure how to fix
 - Not screenreader compatible, but the OG webclient is
 
 ### Installation
