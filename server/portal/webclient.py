@@ -1,6 +1,6 @@
 """
 -------------------
-modified https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py with the addition
+modified https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py
 -------------------
 Webclient based on websockets.
 
