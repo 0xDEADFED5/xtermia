@@ -9,6 +9,7 @@ There are 2 example commands "testaudio" and "pauseaudio" which show how to play
 - Tells Evennia the terminal width/height at startup and on resize
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
+- See commands/testaudio.py for an example on how to play/pause sound in the webclient
 
 ### Notes
 - There's mobile-specific code that I haven't actually been able to test, the font size might need to be adjusted
@@ -16,7 +17,6 @@ There are 2 example commands "testaudio" and "pauseaudio" which show how to play
 ### Installation
 Back up your existing game folder.
 Copy this entire folder structure to your Evennia "mygame" game folder.
-NOTE: This will overwrite your current game's default_cmdsets.py!
 
 Add this line to your mygame/server/conf/settings.py:
 

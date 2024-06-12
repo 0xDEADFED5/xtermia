@@ -29,7 +29,7 @@ as argument.
 
 def term_size(session, *args, **kwargs):
     if args:
-        session.update_flags(SCREENWIDTH=args[0], SCREENHEIGHT=args[1])
+        session.update_flags(SCREENWIDTH={0: args[0]}, SCREENHEIGHT={0: args[1]})
 
 #
 #
