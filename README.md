@@ -6,6 +6,7 @@ There are 2 example commands "testaudio" and "pauseaudio" which show how to play
 ### Features
 - Really fast, does terminal stuff
 - Up arrow for command history
+- Tells Evennia the terminal width/height at startup and on resize
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 

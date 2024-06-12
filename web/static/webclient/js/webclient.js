@@ -86,10 +86,8 @@ function onload() {
   el_input.setAttribute("disabled", "disabled");
   el_input.style.fontFamily = '"Fira Code", Menlo, monospace'
   el_input.style.fontSize = isMobile() ?  MobileFontSize: WebFontSize + "px";
-
   term.open(el_terminal);
   fitAddon.fit();
-
   const browser = (function (agent) {
     "use strict"
     switch (true) {
@@ -111,27 +109,34 @@ function onload() {
         return "other";
     }
   })(window.navigator.userAgent.toLowerCase());
-  console.log(window.navigator.userAgent.toLowerCase() + "\n" + browser);
-
+  //console.log(window.navigator.userAgent.toLowerCase() + "\n" + browser);
   const wsurl = window.wsurl;
   const csessid = window.csessid;
   const cuid = window.cuid;
+  let ws_ready = false;
   const ws = new WebSocket(wsurl + '?' + csessid + '&' + cuid + '&' + browser);
   // const attachAddon = new AttachAddon.AttachAddon(ws);
   // term.loadAddon(attachAddon);
+  term.onResize(function (evt) {
+    if (ws_ready) {
+      ws.send(JSON.stringify(["term_size", [evt.cols, evt.rows], {}]));
+    }
+  });
   el_input.focus();
-
   try {
     ws.onopen = function () {
       term.write("\033[9999;1H");
       term.write("\r\n======== Connected.\r\n");
       el_input.removeAttribute("disabled");
       el_input.focus();
+      ws_ready = true;
+      ws.send(JSON.stringify(["term_size", [term.cols, term.rows], {}]));
     };
     ws.onclose = function () {
       term.write("\033[9999;1H");
       term.write("\r\n======== Connection Lost.\r\n");
       el_input.setAttribute("disabled", "disabled");
+      ws_ready = false;
     };
     ws.onmessage = function (e) {
       //console.log(e.data);
@@ -145,6 +150,13 @@ function onload() {
       } else if (msg[0] === 'audiopause') {
         audio.pause();
       }
+        // else if (msg[0] === 'frame') {
+        //   term.write(msg[1][0]);
+        //   console.log(audio.currentTime);
+        //   if (!audio.paused) {
+        //     ws.send(JSON.stringify(["elapsed", [audio.currentTime], {}]));
+        //   }
+        // }
     };
   } catch (exception) {
     alert("<p>Error " + exception);
@@ -174,6 +186,7 @@ function onload() {
 
       var content = el_input.value;
       ws.send(JSON.stringify(["text", [content], {}]));
+      // ws.send(JSON.stringify(["oob_echo", ["test"], {}]));
       term.write(content + "\r\n");
       el_input.value = "";
 

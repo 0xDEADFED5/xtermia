@@ -20,12 +20,17 @@ JQuery available.
 			font-size: medium;
 
 		}
+        div {
+            resize: none;
+            overflow: auto;
+        }
 	  </style>
     <title> {{game_name}} </title>
     <meta http-equiv="content-type" content="application/xhtml+xml; charset=UTF-8" />
     <meta name="author" content="Evennia" />
     <meta name="generator" content="Evennia" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/css/xterm.css" %} />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/css/normalize.css" %} />
 	<link type="text/css" rel="stylesheet" href={% static "webclient/fonts/FiraCode.css" %} />
