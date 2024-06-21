@@ -5,7 +5,7 @@ This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/t
 - No more input box, type directly into the terminal like it's 1984
 - Really fast, does terminal stuff
 - Up/down arrow to scroll through command history
-- Start typing to see completion suggestions, Right-arrow to accept the current suggestion
+- Start typing to see completion suggestions, Right-arrow or Tab to accept the current suggestion
 - At login Evennia will send available commands, these will be used for completion suggestions as well as history
 - Tells Evennia the terminal width/height at startup and on resize
 - Evennia can tell webclient to enter "interactive mode", which makes arrow keys move the cursor around
