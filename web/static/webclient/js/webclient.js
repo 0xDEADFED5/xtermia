@@ -1,37 +1,13 @@
-// heavily based on https://github.com/fluffos/fluffos/tree/master/src/www/example.js
-// with some pieces from https://github.com/evennia/evennia/blob/main/evennia/web/static/webclient/js/evennia.js
-/**
- * Determine the mobile operating system.
- *
- * @returns {Boolean}
- */
-function isMobile() {
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  // Windows Phone must come first because its UA also contains "Android"
-  if (/windows phone/i.test(userAgent)) {
-    return true;
-  }
 
-  if (/android/i.test(userAgent)) {
-    return true;
-  }
-
-  // iOS detection from: http://stackoverflow.com/a/9039885/177710
-  if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
-    return true;
-  }
-
-  return false;
-}
-
-const WebFontSize = 18;
-const MobileFontSize = 9;
-const term = new Terminal({
-  convertEol: true,
-  allowProposedApi: true,
-  disableStdin: true,
-  fontFamily: '"Fira Code", Menlo, monospace',
-  fontSize: isMobile() ?  MobileFontSize: WebFontSize
+let ws_ready = false;
+let ws = new WebSocket(wsurl + '?' + csessid);
+var term = new Terminal({
+    convertEol: true,
+    allowProposedApi: true,
+    disableStdin: true,
+    fontFamily: '"Fira Code", Menlo, monospace',
+    fontSize: 18,
+    cursorBlink: true
 });
 
 const unicode11Addon = new Unicode11Addon.Unicode11Addon();
@@ -47,182 +23,262 @@ webglAddon.onContextLoss(e => {
 });
 term.loadAddon(webglAddon);
 
-//const weblinksAddon = new WebLinksAddon.WebLinksAddon();
-//term.loadAddon(weblinksAddon);
+const weblinksAddon = new WebLinksAddon.WebLinksAddon();
+term.loadAddon(weblinksAddon);
 
-let history = [];
-let history_index = -1;
-let current_command = "";
+// const el_container = document.getElementById('container');
+const el_terminal = document.getElementById('terminal');
+let audio = new Audio();
 
-function onload() {
-  const el_container = document.getElementById('container');
-  const el_terminal = document.getElementById('terminal');
-  const el_input = document.getElementById('command');
-  let audio = new Audio();
-  window.addEventListener('scroll', function(e) {
-    window.scrollTo(0,0);
+window.addEventListener('scroll', function (e) {
+    window.scrollTo(0, 0);
     fitAddon.fit();
     e.preventDefault();
     e.stopPropagation();
-  });
+});
 
-  window.addEventListener('touchmove', function(e) {
+window.addEventListener('touchmove', function (e) {
     e.preventDefault();
     e.stopPropagation();
-  });
+});
 
-  window.addEventListener('resize', function (e) {
+window.addEventListener('resize', function (e) {
     fitAddon.fit();
-  });
-
-  if(isMobile()) {
-    el_container.style.height = "50vh";
-    fitAddon.fit();
-  } else {
-    el_container.style.height = $(window).height();
-    fitAddon.fit();
-  }
-
-  el_input.setAttribute("disabled", "disabled");
-  el_input.style.fontFamily = '"Fira Code", Menlo, monospace'
-  el_input.style.fontSize = isMobile() ?  MobileFontSize: WebFontSize + "px";
-  term.open(el_terminal);
-  fitAddon.fit();
-  const browser = (function (agent) {
-    "use strict"
-    switch (true) {
-      case agent.indexOf("edge") > -1:
-        return "edge";
-      case agent.indexOf("edg") > -1:
-        return "chromium based edge (dev or canary)";
-      case agent.indexOf("opr") > -1 && !!window.opr:
-        return "opera";
-      case agent.indexOf("chrome") > -1 && !!window.chrome:
-        return "chrome";
-      case agent.indexOf("trident") > -1:
-        return "ie";
-      case agent.indexOf("firefox") > -1:
-        return "firefox";
-      case agent.indexOf("safari") > -1:
-        return "safari";
-      default:
-        return "other";
-    }
-  })(window.navigator.userAgent.toLowerCase());
-  //console.log(window.navigator.userAgent.toLowerCase() + "\n" + browser);
-  const wsurl = window.wsurl;
-  const csessid = window.csessid;
-  const cuid = window.cuid;
-  let ws_ready = false;
-  const ws = new WebSocket(wsurl + '?' + csessid + '&' + cuid + '&' + browser);
-  // const attachAddon = new AttachAddon.AttachAddon(ws);
-  // term.loadAddon(attachAddon);
-  term.onResize(function (evt) {
+});
+term.onResize(e => {
     if (ws_ready) {
-      ws.send(JSON.stringify(["term_size", [evt.cols, evt.rows], {}]));
+        ws.send(JSON.stringify(['term_size', [e.cols, e.rows], {}]));
     }
-  });
-  el_input.focus();
-  try {
-    ws.onopen = function () {
-      term.write("\033[9999;1H");
-      term.write("\r\n======== Connected.\r\n");
-      el_input.removeAttribute("disabled");
-      el_input.focus();
-      ws_ready = true;
-      ws.send(JSON.stringify(["term_size", [term.cols, term.rows], {}]));
-    };
-    ws.onclose = function () {
-      term.write("\033[9999;1H");
-      term.write("\r\n======== Connection Lost.\r\n");
-      el_input.setAttribute("disabled", "disabled");
-      ws_ready = false;
-    };
-    ws.onmessage = function (e) {
-      //console.log(e.data);
-      let msg = JSON.parse(e.data);
-      if (msg[0] === 'text') {
-        term.write(msg[1][0]);
-      } else if (msg[0] === 'audio') {
-        audio.pause();
-        audio.src = msg[1][0];
-        audio.play();
-      } else if (msg[0] === 'audiopause') {
-        audio.pause();
-      }
-        // else if (msg[0] === 'frame') {
-        //   term.write(msg[1][0]);
-        //   console.log(audio.currentTime);
-        //   if (!audio.paused) {
-        //     ws.send(JSON.stringify(["elapsed", [audio.currentTime], {}]));
-        //   }
-        // }
-    };
-  } catch (exception) {
-    alert("<p>Error " + exception);
-  }
+});
+// term.onData(e => {
+//     console.log(data);
+// });
 
-  el_input.addEventListener("blur", function(e) {
-    e.stopPropagation();
-    e.preventDefault();
-    el_input.focus();
-  });
+const max_len = 128;
+let history = [];
+let player_commands = [];
+let command = '';
+let completion = '';
+let index = 0;
+let last_index = -2;
+let interactive_mode = false;
+const grey = '\x1B[38;5;243m';
+const reset = '\x1B[0m';
+const command_color = '\x1B[38;5;220m';
 
-  el_input.addEventListener("keydown", function(e) {
-    if (e.key === "Tab") {
-      e.stopPropagation();
-      e.preventDefault();
-      return ;
-    }
-
-    if (e.key === "Enter") {
-      if(el_input.value) {
-        history.push(el_input.value);
-        if (history.length > 64) {
-          history.shift();
-        }
-        history_index = -1;
-      }
-
-      var content = el_input.value;
-      ws.send(JSON.stringify(["text", [content], {}]));
-      // ws.send(JSON.stringify(["oob_echo", ["test"], {}]));
-      term.write(content + "\r\n");
-      el_input.value = "";
-
-    } else if (e.key === "ArrowUp") {
-      e.stopPropagation();
-      e.preventDefault();
-
-      // If there is history, show last one
-      if(history.length > 0) {
-        // remember current command
-        if(history_index === -1) {
-          current_command = el_input.value;
-        }
-        if (history_index < history.length - 1) {
-          history_index = history_index + 1;
-          el_input.value = history[history.length - history_index - 1];
-        }
-      }
-    } else if (e.key === "ArrowDown") {
-      e.stopPropagation();
-      e.preventDefault();
-
-      if(history_index > -1) {
-        history_index = history_index - 1;
-        if(history_index >= 0) {
-          el_input.value = history[history.length - history_index - 1];
-        } else {
-          el_input.value = current_command;
-        }
-      }
-    }
-  });
+function logStuff() {
+    console.log('index = ' + index);
+    console.log('last_index = ' + last_index);
+    console.log('command = ' + command);
+    console.log('history = ' + history);
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  new FontFaceObserver("Fira Code").load().then(function () {
-    onload();
-  });
-}, false);
+function getCompletion(c) {
+    for (let i = 0; i < history.length; i++) {
+        if (history[i].length > c.length && history[i].startsWith(c)) {
+            return [true, history[i]]
+        }
+    }
+    for (let i = 0; i < player_commands.length; i++) {
+        if (player_commands[i].length > c.length && player_commands[i].startsWith(c)) {
+            return [true, player_commands[i]]
+        }
+    }
+    return [false]
+}
+
+function cursorBack(len) {
+    const back = '\x9B' + len + 'D';
+    const del = '\x9B' + len + 'P';
+    term.write(back + del);
+}
+function onKey(e) {
+    switch (e.domEvent.key) {
+        case 'Enter':
+            if (command !== '') {
+                ws.send(JSON.stringify(['text', [command], {}]));
+                if (history.length > max_len) {
+                    history.shift();
+                }
+                if (!history.includes(command)) {
+                    index = history.push(command) - 1;
+                } else {
+                    index = history.indexOf(command);
+                }
+                if (completion.length > 0) {
+                    cursorBack(completion.length);
+                    completion = '';
+                }
+                cursorBack(command.length);
+                term.write(command_color+command+reset+'\n');
+                last_index = -2;
+                command = '';
+            }
+            break;
+        case 'Tab':
+            if (completion.length > 0) {
+                cursorBack(completion.length);
+                term.write(completion);
+                command = command.concat(completion);
+                completion = '';
+            }
+          break;
+        case 'Backspace':
+            if (interactive_mode) {
+                break;
+            }
+            if (completion.length > 0) {
+                cursorBack(completion.length);
+                completion = '';
+            }
+            if (command.length !== 0) {
+                command = command.slice(0, -1);
+                console.log('command = ' + command);
+                cursorBack(1);
+            }
+            break;
+        case 'ArrowRight':
+            if (interactive_mode) {
+                term.write(e.key);
+                break;
+            }
+            if (completion.length > 0) {
+                cursorBack(completion.length);
+                term.write(completion);
+                command = command.concat(completion);
+                completion = '';
+            }
+            break;
+        case 'ArrowUp':
+            if (interactive_mode) {
+                term.write(e.key);
+                break;
+            }
+            if (index - 1 >= 0 && index === last_index && last_index !== -1) {
+                index -= 1;
+            }
+            if (index !== last_index) {
+                if (index === -1) {
+                    index = history.length - 1;
+                }
+                if (command.length > 0) {
+                    cursorBack(command.length);
+                    command = '';
+                }
+                if (completion.length > 0) {
+                    cursorBack(completion.length);
+                    completion = '';
+                }
+                command = history[index];
+                term.write(command);
+                last_index = index;
+            }
+            break;
+
+        case 'ArrowDown':
+            if (interactive_mode) {
+                term.write(e.key);
+                break;
+            }
+            if (index === -1){
+              break;
+            }
+            if (index + 1 <= history.length - 1 && last_index === index) {
+                index += 1;
+            }
+            if (index === history.length - 1 && last_index === index) {
+                cursorBack(command.length);
+                command = '';
+                index = -1;
+                break;
+            }
+            if (index !== last_index) {
+                cursorBack(command.length);
+                command = history[index];
+                term.write(command);
+                last_index = index;
+            }
+            break;
+        case 'ArrowLeft':
+            if (interactive_mode) {
+                term.write(e.key);
+                break;
+            }
+            break;
+        default:
+            command = command.concat(e.key);
+            index = history.length - 1;
+            result = getCompletion(command);
+            if (result[0]) {
+                if (completion.length > 0) {
+                    cursorBack(completion.length);
+                }
+                const str = result[1].substring(command.length);
+                completion = str;
+                term.write(e.key + grey + str + reset);
+            } else {
+                let bs = '';
+                if (completion.length > 0) {
+                    cursorBack(completion.length);
+                }
+                completion = '';
+                term.write(e.key);
+            }
+    }
+}
+
+term.onKey(e => onKey(e));
+term.open(el_terminal);
+fitAddon.fit();
+ws.onopen = function () {
+    term.write('\r\n======== Connected.\r\n');
+    ws_ready = true;
+    ws.send(JSON.stringify(['term_size', [term.cols, term.rows], {}]));
+};
+ws.onclose = function () {
+    term.write('\r\n======== Connection lost.\r\n');
+    ws_ready = false;
+};
+ws.onmessage = function (e) {
+    // console.log(e.data);
+    let msg = JSON.parse(e.data);
+    switch (msg[0]) {
+        case 'text':
+            term.write(msg[1][0]);
+            break;
+        case 'audio':
+            audio.pause();
+            audio.src = msg[1][0];
+            audio.play();
+            break;
+        case 'audio_pause':
+            audio.pause();
+            break;
+        case 'logged_in':
+            break;
+        case 'interactive_start':
+            interactive_mode = true;
+            break;
+        case 'interactive_end':
+            interactive_mode = false;
+            break;
+        case 'player_commands':
+            player_commands = msg[1];
+            break;
+        default:
+            console.log('Unknown command: ' + msg);
+    }
+}
+ws.onerror = function (e) {
+    console.log(e);
+    term.write('\r\n======== Connection error: ' + e + '\r\n');
+};
+term.focus();
+window.addEventListener('focus', (e) => {
+    console.log('focus');
+    term.focus();
+});
+window.addEventListener('keydown', (e) => {
+    console.log('keydown');
+    term.focus();
+});

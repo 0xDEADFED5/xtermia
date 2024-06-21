@@ -1,66 +1,35 @@
 <!DOCTYPE HTML>
-<!--
-This is adapted from: https://github.com/evennia/evennia/blob/main/evennia/web/templates/webclient/base.html
--->
-<!--
-Extend the main webclient template with this file to get communication
-with evennia set up automatically and get the Evennia JS lib and
-JQuery available.
--->
-
 {% load static %}
 <html dir="ltr" lang="en">
   <head>
-	  <style>
-		body {
+    <style>
+		html,body {
             background-color: black;
+            width: 100%;
 			height: 100%;
+            margin: 0;
+            padding: 0;
 			overflow-x: hidden;
-			font-family: 'Fira Code', monospace;
-			font-size: medium;
-
 		}
-        div {
+        body {
+            height: 100vh;
+            width: 100vw;
+        }
+        .container {
             resize: none;
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 100vh;
+            width: 100vw;
         }
 	  </style>
     <title> {{game_name}} </title>
-    <meta http-equiv="content-type" content="application/xhtml+xml; charset=UTF-8" />
+    <meta http-equiv="content-type", content="application/xhtml+xml; charset=UTF-8" />
     <meta name="author" content="Evennia" />
-    <meta name="generator" content="Evennia" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-	<link type="text/css" rel="stylesheet" href={% static "webclient/css/xterm.css" %} />
-	<link type="text/css" rel="stylesheet" href={% static "webclient/css/normalize.css" %} />
-	<link type="text/css" rel="stylesheet" href={% static "webclient/fonts/FiraCode.css" %} />
-    {% comment %}
-    Allows for loading custom styles without overriding the base site stylesheet
-    {% endcomment %}
-    <link rel="icon" type="image/x-icon" href="/static/website/images/evennia_logo.png" />
-    <!-- Import JQuery and warn if there is a problem -->
-    {% block jquery_import %}
-	<script src={% static "webclient/js/jquery-3.7.1.min.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-    {% endblock %}
-    <script type="text/javascript" charset="utf-8">
-        if(!window.jQuery) {
-            document.write("<div class='err'>jQuery library not found or the online version could not be reached. Check so Javascript is not blocked in your browser.</div>");
-        }
-    </script>
-    <!-- This is will only fire if javascript is actually active -->
-    <script language="javascript" type="text/javascript">
-      $(document).ready(function() {
-        $('#noscript').remove();
-        $('#clientwrapper').removeClass('d-none');
-      })
-    </script>
-    <!-- Generate a low-quality UID to uniquely identify client tabs -->
-    <script language="javascript" type="text/javascript">
-        function generateUID() {
-            return Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
-        }
-        var cuid = generateUID();
-    </script>
-    <!-- Set up Websocket url and load the evennia.js library-->
+    <link rel="icon" type="image/x-icon" href="{% static "website/images/logo.png" %}" />
+    <link rel="stylesheet" type="text/css" href="{% static "webclient/css/xterm.css" %}?{{client_css_version}}">
+    <link rel="stylesheet" type="text/css" href="{% static "webclient/css/normalize.css" %}?{{client_css_version}}">
+    <link rel="stylesheet" type="text/css" href="{% static "webclient/fonts/FiraCode.css" %}?{{client_css_version}}">
     <script language="javascript" type="text/javascript">
         {% if websocket_enabled %}
             var wsactive = true;
@@ -78,33 +47,14 @@ JQuery available.
             var wsurl = "ws://" + this.location.hostname + ":{{websocket_port}}";
         {% endif %}
     </script>
-    <script src={% static "webclient/js/xterm.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/addon-fit.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/addon-unicode11.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/addon-webgl.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/fontobserver.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-	<script src={% static "webclient/js/webclient.js" %} language="javascript" type="text/javascript" charset="utf-8"/></script>
-    {% block guilib_import %}
-    {% endblock %}
-
-    {% block scripts %}
-    {% endblock %}
+    <script src="{% static "webclient/js/xterm.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+    <script src="{% static "webclient/js/addon-fit.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+    <script src="{% static "webclient/js/addon-unicode11.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+    <script src="{% static "webclient/js/addon-webgl.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+    <script src="{% static "webclient/js/addon-web-links.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
   </head>
-  <body>
-    <div id="noscript" class="err">
-        <h3>Javascript Error: The Evennia MUD client requires that you
-            have Javascript activated.</h3>
-            <p>Turn off eventual script blockers and/or switch to a
-            web browser supporting javascript. <p>
-            This error could also be due to not being able to access
-            the online jQuery javascript library.</p>
-        <!-- This is will only fire if javascript is actually active -->
-        <script language="javascript" type="text/javascript">
-            $('#noscript').remove();
-        </script>
-    </div>
-    <!-- main client -->
-        {% block client %}
-        {% endblock %}
-  </body>
+<body>
+    <div id="terminal" class="container"></div>
+    <script src="{% static "webclient/js/webclient.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+</body>
 </html>
