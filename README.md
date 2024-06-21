@@ -21,6 +21,7 @@ Copy this entire folder structure to your Evennia "mygame" game folder.
 Add these lines to your mygame/server/conf/settings.py:
 
 `WEBSOCKET_PROTOCOL_CLASS = "server.portal.webclient.WebSocketClient"`
+
 `TEMPLATES[0]["OPTIONS"]["context_processors"].append("web.custom_context.extra_context")`
 
 Add this to your mygame/typeclasses/characters.py `Character` class if you want command completion hints:
