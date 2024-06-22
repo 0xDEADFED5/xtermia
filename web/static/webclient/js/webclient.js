@@ -59,7 +59,17 @@ function logStuff(from) {
     console.log('command = ' + command);
     console.log('history = ' + history);
 }
-
+function doPaste(){
+    navigator.clipboard.readText()
+    .then(text => {
+        term.write(text);
+        command = command.substring(0, cursor_pos) + text + command.substring(cursor_pos);
+        cursor_pos += text.length;
+    })
+    .catch(err => {
+        console.log('Clipboard error: ', err);
+    });
+}
 function getCompletion(c) {
     for (let i = 0; i < history.length; i++) {
         if (history[i].length > c.length && history[i].startsWith(c)) {
@@ -158,7 +168,6 @@ function onKey(e) {
             }
             if (command.length !== 0 && cursor_pos > 0) {
                 // backspace can be in the middle of a line
-                // command = command.slice(0, -1);
                 const sub = command.substring(cursor_pos);
                 command = command.substring(0, cursor_pos - 1) + sub;
                 cursorBack(1);
@@ -253,6 +262,11 @@ function onKey(e) {
             if (cursor_pos > 0) {
                 cursor_pos -= 1;
                 term.write(e.key);
+            }
+            break;
+        case 'v':
+            if (e.domEvent.ctrlKey && !e.domEvent.altKey) {
+                doPaste();
             }
             break;
         default:
