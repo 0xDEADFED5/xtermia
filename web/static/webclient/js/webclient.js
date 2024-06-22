@@ -95,6 +95,11 @@ function cursorBack(len) {
 function onKey(e) {
     switch (e.domEvent.key) {
         case 'Enter':
+            if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
+                term.write(e.key);
+                break;
+            }
             if (command !== '') {
                 ws.send(JSON.stringify(['text', [command], {}]));
                 if (history.length > max_len) {
@@ -116,6 +121,11 @@ function onKey(e) {
             }
             break;
         case 'Tab':
+            if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
+                term.write(e.key);
+                break;
+            }
             if (completion.length > 0) {
                 cursorBack(completion.length);
                 term.write(completion);
@@ -139,6 +149,7 @@ function onKey(e) {
             break;
         case 'ArrowRight':
             if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
                 break;
             }
@@ -151,6 +162,7 @@ function onKey(e) {
             break;
         case 'ArrowUp':
             if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
                 break;
             }
@@ -177,9 +189,14 @@ function onKey(e) {
 
         case 'ArrowDown':
             if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
                 break;
             }
+            if (completion.length > 0) {
+                    cursorBack(completion.length);
+                    completion = '';
+                }
             if (index === -1){
               break;
             }
@@ -201,11 +218,17 @@ function onKey(e) {
             break;
         case 'ArrowLeft':
             if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
                 break;
             }
             break;
         default:
+            if (interactive_mode) {
+                ws.send(JSON.stringify(['interact', [e.key], {}]));
+                term.write(e.key);
+                break;
+            }
             command = command.concat(e.key);
             index = history.length - 1;
             result = getCompletion(command);
