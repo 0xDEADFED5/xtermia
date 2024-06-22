@@ -15,7 +15,7 @@ timestamp for your base website CSS file and add it here!)
 from os.path import getmtime
 from random import choice
 
-WEBCLIENT_CSS_VERSION = round(getmtime("web/static/webclient/css/webclient.css"))
+WEBCLIENT_CSS_VERSION = round(getmtime("web/static/webclient/css/xterm.css"))
 WEBCLIENT_JS_VERSION = round(getmtime("web/static/webclient/js/webclient.js"))
 
 
