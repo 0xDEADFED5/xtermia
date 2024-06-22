@@ -29,22 +29,6 @@ term.loadAddon(weblinksAddon);
 // const el_container = document.getElementById('container');
 const el_terminal = document.getElementById('terminal');
 let audio = new Audio();
-
-window.addEventListener('scroll', function (e) {
-    window.scrollTo(0, 0);
-    fitAddon.fit();
-    e.preventDefault();
-    e.stopPropagation();
-});
-
-window.addEventListener('touchmove', function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-});
-
-window.addEventListener('resize', function (e) {
-    fitAddon.fit();
-});
 term.onResize(e => {
     if (ws_ready) {
         ws.send(JSON.stringify(['term_size', [e.cols, e.rows], {}]));
@@ -231,7 +215,7 @@ function onKey(e) {
             }
             command = command.concat(e.key);
             index = history.length - 1;
-            result = getCompletion(command);
+            const result = getCompletion(command);
             if (result[0]) {
                 if (completion.length > 0) {
                     cursorBack(completion.length);
@@ -240,7 +224,6 @@ function onKey(e) {
                 completion = str;
                 term.write(e.key + grey + str + reset);
             } else {
-                let bs = '';
                 if (completion.length > 0) {
                     cursorBack(completion.length);
                 }
@@ -298,10 +281,22 @@ ws.onerror = function (e) {
 };
 term.focus();
 window.addEventListener('focus', (e) => {
-    console.log('focus');
     term.focus();
 });
 window.addEventListener('keydown', (e) => {
-    console.log('keydown');
     term.focus();
+});
+// window.addEventListener('scroll', function (e) {
+//     window.scrollTo(0, 0);
+//     fitAddon.fit();
+//     e.preventDefault();
+//     e.stopPropagation();
+// });
+//
+// window.addEventListener('touchmove', function (e) {
+//     e.preventDefault();
+//     e.stopPropagation();
+// });
+window.addEventListener('resize', function (e) {
+    fitAddon.fit();
 });
