@@ -89,6 +89,7 @@ function cursorBack(len) {
     const back = '\x9B' + len + 'D';
     const del = '\x9B' + len + 'P';
     term.write(back + del);
+    // term.write(back + ' '.repeat(len));
 }
 function onKey(e) {
     switch (e.domEvent.key) {
@@ -203,7 +204,7 @@ function onKey(e) {
             if (index - 1 >= 0 && index === last_index && last_index !== -1) {
                 index -= 1;
             }
-            if (index !== last_index) {
+            if (index !== last_index && history.length > 0) {
                 if (index === -1) {
                     index = history.length - 1;
                 }
@@ -240,6 +241,7 @@ function onKey(e) {
                 cursorBack(command.length);
                 command = '';
                 index = -1;
+                cursor_pos = 0;
                 break;
             }
             if (index !== last_index) {
@@ -247,6 +249,7 @@ function onKey(e) {
                 command = history[index];
                 term.write(command);
                 last_index = index;
+                cursor_pos = command.length;
             }
             break;
         case 'ArrowLeft':
@@ -275,6 +278,7 @@ function onKey(e) {
             }
             break;
         default:
+            logStuff('DEFAULT TOP');
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
@@ -306,6 +310,7 @@ function onKey(e) {
                 completion = '';
                 term.write(e.key);
             }
+            logStuff('DEFAULT END');
     }
 }
 
