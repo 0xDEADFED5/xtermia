@@ -121,6 +121,18 @@ function onKey(e) {
                 completion = '';
             }
           break;
+        case 'Home':
+            if (cursor_pos !== 0) {
+                term.write('\x9B'+cursor_pos+'D');
+                cursor_pos = 0;
+            }
+            break;
+        case 'End':
+            if (cursor_pos !== command.length) {
+                term.write('\x9B'+(command.length-cursor_pos)+'C');
+                cursor_pos = command.length;
+            }
+            break;
         case 'Delete':
             if (cursor_pos < command.length)
             {
@@ -147,7 +159,7 @@ function onKey(e) {
             if (command.length !== 0 && cursor_pos > 0) {
                 // backspace can be in the middle of a line
                 // command = command.slice(0, -1);
-                sub = command.substring(cursor_pos);
+                const sub = command.substring(cursor_pos);
                 command = command.substring(0, cursor_pos - 1) + sub;
                 cursorBack(1);
                 cursor_pos -= 1;
