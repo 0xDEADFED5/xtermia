@@ -62,8 +62,9 @@ function logStuff(from) {
 function doPaste(){
     navigator.clipboard.readText()
     .then(text => {
-        term.write(text);
-        command = command.substring(0, cursor_pos) + text + command.substring(cursor_pos);
+        const sub = command.substring(cursor_pos);
+        command = command.substring(0, cursor_pos) + text + sub;
+        term.write(text+sub);
         cursor_pos += text.length;
     })
     .catch(err => {
