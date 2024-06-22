@@ -278,13 +278,11 @@ function onKey(e) {
             }
             break;
         default:
-            logStuff('DEFAULT TOP');
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
                 break;
             }
-            //command = command.concat(e.key);
             command = command.substring(0, cursor_pos) + e.key + command.substring(cursor_pos);
             cursor_pos += 1;
             index = history.length - 1;
@@ -310,7 +308,6 @@ function onKey(e) {
                 completion = '';
                 term.write(e.key);
             }
-            logStuff('DEFAULT END');
     }
 }
 
