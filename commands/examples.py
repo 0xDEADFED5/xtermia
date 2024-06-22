@@ -49,7 +49,7 @@ class CmdUpdateCompletions(Command):
         caller = self.caller
         cmdset = caller.cmdset
         cmd_list = []
-        if len(cmdset.cmdset_stack) != 0:
+        if cmdset.cmdset_stack:
             cmds = cmdset.cmdset_stack[0].get_all_cmd_keys_and_aliases()
             for c in cmds:
                 cmd_list.append(c)
