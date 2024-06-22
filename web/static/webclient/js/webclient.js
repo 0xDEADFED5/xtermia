@@ -1,7 +1,7 @@
 
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
-var term = new Terminal({
+const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
     disableStdin: true,
@@ -128,10 +128,14 @@ function onKey(e) {
                 cursorBack(completion.length);
                 completion = '';
             }
-            if (command.length !== 0) {
-                command = command.slice(0, -1);
-                console.log('command = ' + command);
+            if (command.length !== 0 && cursor_pos > 0) {
+                // backspace can be in the middle of a line
+                // command = command.slice(0, -1);
+                sub = command.substring(cursor_pos);
+                command = command.substring(0, cursor_pos - 1) + sub;
                 cursorBack(1);
+                // write the end of the now-shortened command and move the cursor back
+                term.write(sub+'\x9B1D');
             }
             break;
         case 'ArrowRight':
@@ -214,6 +218,10 @@ function onKey(e) {
                 term.write(e.key);
                 break;
             }
+            if (completion.length > 0) {
+                    cursorBack(completion.length);
+                    completion = '';
+                }
             if (cursor_pos > 0) {
                 cursor_pos -= 1;
                 term.write(e.key);
