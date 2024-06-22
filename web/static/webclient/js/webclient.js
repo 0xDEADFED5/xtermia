@@ -122,7 +122,19 @@ function onKey(e) {
             }
           break;
         case 'Delete':
-            // TODO
+            if (cursor_pos < command.length)
+            {
+                if (command.length - cursor_pos === 1){
+                    command = command.slice(0, -1);
+                    term.write(' \x9B1D');  // print a space to cover it up, move the cursor back
+                }
+                else {
+                    const sub = command.substring(cursor_pos + 1);
+                    command = command.substring(0, cursor_pos) + sub;
+                    // shorten the current command, print it, add space to hide the last char, move cursor back
+                    term.write(sub +' '+'\x9B'+(sub.length+1)+'D');
+                }
+            }
             break;
         case 'Backspace':
             if (interactive_mode) {
