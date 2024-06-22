@@ -270,6 +270,12 @@ function onKey(e) {
                 doPaste();
             }
             break;
+        case 'c':
+            if (e.domEvent.ctrlKey && !e.domEvent.altKey) {
+                const c = term.getSelection();
+                navigator.clipboard.writeText(c);
+            }
+            break;
         default:
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
