@@ -49,8 +49,10 @@ let interactive_mode = false;
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
+let cursor_pos = 0;
 
 function logStuff() {
+    console.log('cursor_pos = ' + cursor_pos);
     console.log('index = ' + index);
     console.log('last_index = ' + last_index);
     console.log('command = ' + command);
@@ -102,6 +104,7 @@ function onKey(e) {
                 term.write(command_color+command+reset+'\n');
                 last_index = -2;
                 command = '';
+                cursor_pos = 0;
             }
             break;
         case 'Tab':
@@ -142,6 +145,11 @@ function onKey(e) {
                 term.write(completion);
                 command = command.concat(completion);
                 completion = '';
+            }
+            else if (cursor_pos !== command.length) {
+                //cursor is being moved
+                cursor_pos += 1;
+                term.write(e.key);
             }
             break;
         case 'ArrowUp':
@@ -206,6 +214,10 @@ function onKey(e) {
                 term.write(e.key);
                 break;
             }
+            if (cursor_pos > 0) {
+                cursor_pos -= 1;
+                term.write(e.key);
+            }
             break;
         default:
             if (interactive_mode) {
@@ -213,8 +225,17 @@ function onKey(e) {
                 term.write(e.key);
                 break;
             }
-            command = command.concat(e.key);
+            //command = command.concat(e.key);
+            command = command.substring(0, cursor_pos) + e.key + command.substring(cursor_pos);
+            cursor_pos += 1;
             index = history.length - 1;
+            // insert characters after left arrow has been pressed
+            if (cursor_pos !== command.length) {
+                const sub = command.substring(cursor_pos);
+                // overwrite command from new position and move the cursor back
+                term.write(e.key+sub+'\x9B'+sub.length+'D');
+                break;
+            }
             const result = getCompletion(command);
             if (result[0]) {
                 if (completion.length > 0) {
