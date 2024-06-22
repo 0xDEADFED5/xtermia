@@ -25,22 +25,27 @@ as argument.
     default(session, cmdname, *args, **kwargs)
 
 """
+from evennia.utils import logger
 
 
 def term_size(session, *args, **kwargs):
     if args:
         session.update_flags(SCREENWIDTH={0: args[0]}, SCREENHEIGHT={0: args[1]})
 
-#
-#
-# def default(session, cmdname, *args, **kwargs):
-#     """
-#     Handles commands without a matching inputhandler func.
-#
-#     Args:
-#         session (Session): The active Session.
-#         cmdname (str): The (unmatched) command name
-#         args, kwargs (any): Arguments to function.
-#
-#     """
-#     pass
+
+def interact(session, *args, **kwargs):
+    if args:
+        logger.log_err(f"Not implemented yet: interact {str(args)} {str(kwargs)}")
+
+
+def default(session, cmdname, *args, **kwargs):
+    """
+    Handles commands without a matching inputhandler func.
+
+    Args:
+        session (Session): The active Session.
+        cmdname (str): The (unmatched) command name
+        args, kwargs (any): Arguments to function.
+
+    """
+    logger.log_err(f"Unknown command received: {cmdname} {str(args)} {str(kwargs)}")
