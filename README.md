@@ -46,7 +46,6 @@ def at_post_puppet(self, **kwargs):
 - addon-unicode11.js = npm install --save @xterm/addon-unicode11
 - addon-webgl.js = npm install --save @xterm/addon-webgl
 - FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
-- normalize.css = https://github.com/necolas/normalize.css
 - webclient.py = https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py
 - xterm.css = npm install @xterm/xterm
 - xterm.js = ""
