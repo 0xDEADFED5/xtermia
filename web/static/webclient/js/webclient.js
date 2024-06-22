@@ -232,7 +232,6 @@ function onKey(e) {
             }
             break;
         default:
-            console.log(e);
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
