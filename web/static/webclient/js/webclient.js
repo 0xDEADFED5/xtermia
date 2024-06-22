@@ -1,4 +1,3 @@
-
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
 const term = new Terminal({
@@ -19,7 +18,7 @@ term.loadAddon(fitAddon);
 
 const webglAddon = new WebglAddon.WebglAddon();
 webglAddon.onContextLoss(e => {
-  webglAddon.dispose();
+    webglAddon.dispose();
 });
 term.loadAddon(webglAddon);
 
@@ -59,18 +58,20 @@ function logStuff(from) {
     console.log('command = ' + command);
     console.log('history = ' + history);
 }
-function doPaste(){
+
+function doPaste() {
     navigator.clipboard.readText()
-    .then(text => {
-        const sub = command.substring(cursor_pos);
-        command = command.substring(0, cursor_pos) + text + sub;
-        term.write(text+sub);
-        cursor_pos += text.length;
-    })
-    .catch(err => {
-        console.log('Clipboard error: ', err);
-    });
+        .then(text => {
+            const sub = command.substring(cursor_pos);
+            command = command.substring(0, cursor_pos) + text + sub;
+            term.write(text + sub);
+            cursor_pos += text.length;
+        })
+        .catch(err => {
+            console.log('Clipboard error: ', err);
+        });
 }
+
 function getCompletion(c) {
     for (let i = 0; i < history.length; i++) {
         if (history[i].length > c.length && history[i].startsWith(c)) {
@@ -91,6 +92,41 @@ function cursorBack(len) {
     term.write(back + del);
     // term.write(back + ' '.repeat(len));
 }
+
+function defaultHandler(e) {
+    if (interactive_mode) {
+        ws.send(JSON.stringify(['interact', [e.key], {}]));
+        term.write(e.key);
+        return;
+    }
+    command = command.substring(0, cursor_pos) + e.key + command.substring(cursor_pos);
+    cursor_pos += 1;
+    index = history.length - 1;
+    last_index = -1;
+    // insert characters after left arrow has been pressed
+    if (cursor_pos !== command.length) {
+        const sub = command.substring(cursor_pos);
+        // overwrite command from new position and move the cursor back
+        term.write(e.key + sub + '\x9B' + sub.length + 'D');
+        return;
+    }
+    const result = getCompletion(command);
+    if (result[0]) {
+        if (completion.length > 0) {
+            cursorBack(completion.length);
+        }
+        const str = result[1].substring(command.length);
+        completion = str;
+        term.write(e.key + grey + str + reset);
+    } else {
+        if (completion.length > 0) {
+            cursorBack(completion.length);
+        }
+        completion = '';
+        term.write(e.key);
+    }
+}
+
 function onKey(e) {
     switch (e.domEvent.key) {
         case 'Enter':
@@ -114,7 +150,7 @@ function onKey(e) {
                     completion = '';
                 }
                 cursorBack(command.length);
-                term.write(command_color+command+reset+'\n');
+                term.write(command_color + command + reset + '\n');
                 last_index = -2;
                 command = '';
                 cursor_pos = 0;
@@ -132,31 +168,29 @@ function onKey(e) {
                 command = command.concat(completion);
                 completion = '';
             }
-          break;
+            break;
         case 'Home':
             if (cursor_pos !== 0) {
-                term.write('\x9B'+cursor_pos+'D');
+                term.write('\x9B' + cursor_pos + 'D');
                 cursor_pos = 0;
             }
             break;
         case 'End':
             if (cursor_pos !== command.length) {
-                term.write('\x9B'+(command.length-cursor_pos)+'C');
+                term.write('\x9B' + (command.length - cursor_pos) + 'C');
                 cursor_pos = command.length;
             }
             break;
         case 'Delete':
-            if (cursor_pos < command.length)
-            {
-                if (command.length - cursor_pos === 1){
+            if (cursor_pos < command.length) {
+                if (command.length - cursor_pos === 1) {
                     command = command.slice(0, -1);
                     term.write(' \x9B1D');  // print a space to cover it up, move the cursor back
-                }
-                else {
+                } else {
                     const sub = command.substring(cursor_pos + 1);
                     command = command.substring(0, cursor_pos) + sub;
                     // shorten the current command, print it, add space to hide the last char, move cursor back
-                    term.write(sub +' '+'\x9B'+(sub.length+1)+'D');
+                    term.write(sub + ' ' + '\x9B' + (sub.length + 1) + 'D');
                 }
             }
             break;
@@ -174,7 +208,7 @@ function onKey(e) {
                 command = command.substring(0, cursor_pos - 1) + sub;
                 cursor_pos -= 1;
                 // move cursor back, write shortened command + ' ', move cursor back
-                term.write('\x9B1D'+sub+' '+'\x9B1D');
+                term.write('\x9B1D' + sub + ' ' + '\x9B1D');
             }
             break;
         case 'ArrowRight':
@@ -188,8 +222,7 @@ function onKey(e) {
                 term.write(completion);
                 command = command.concat(completion);
                 completion = '';
-            }
-            else if (cursor_pos !== command.length) {
+            } else if (cursor_pos !== command.length) {
                 //cursor is being moved
                 cursor_pos += 1;
                 term.write(e.key);
@@ -228,11 +261,11 @@ function onKey(e) {
                 break;
             }
             if (completion.length > 0) {
-                    cursorBack(completion.length);
-                    completion = '';
-                }
-            if (index === -1){
-              break;
+                cursorBack(completion.length);
+                completion = '';
+            }
+            if (index === -1) {
+                break;
             }
             if (index + 1 <= history.length - 1 && last_index === index) {
                 index += 1;
@@ -259,9 +292,9 @@ function onKey(e) {
                 break;
             }
             if (completion.length > 0) {
-                    cursorBack(completion.length);
-                    completion = '';
-                }
+                cursorBack(completion.length);
+                completion = '';
+            }
             if (cursor_pos > 0) {
                 cursor_pos -= 1;
                 term.write(e.key);
@@ -270,44 +303,19 @@ function onKey(e) {
         case 'v':
             if (e.domEvent.ctrlKey && !e.domEvent.altKey) {
                 doPaste();
+            } else {
+                defaultHandler(e);
             }
             break;
         case 'c':
             if (e.domEvent.ctrlKey && !e.domEvent.altKey) {
                 navigator.clipboard.writeText(term.getSelection());
+            } else {
+                defaultHandler(e);
             }
             break;
         default:
-            if (interactive_mode) {
-                ws.send(JSON.stringify(['interact', [e.key], {}]));
-                term.write(e.key);
-                break;
-            }
-            command = command.substring(0, cursor_pos) + e.key + command.substring(cursor_pos);
-            cursor_pos += 1;
-            index = history.length - 1;
-            // insert characters after left arrow has been pressed
-            if (cursor_pos !== command.length) {
-                const sub = command.substring(cursor_pos);
-                // overwrite command from new position and move the cursor back
-                term.write(e.key+sub+'\x9B'+sub.length+'D');
-                break;
-            }
-            const result = getCompletion(command);
-            if (result[0]) {
-                if (completion.length > 0) {
-                    cursorBack(completion.length);
-                }
-                const str = result[1].substring(command.length);
-                completion = str;
-                term.write(e.key + grey + str + reset);
-            } else {
-                if (completion.length > 0) {
-                    cursorBack(completion.length);
-                }
-                completion = '';
-                term.write(e.key);
-            }
+            defaultHandler(e);
     }
 }
 
