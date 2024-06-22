@@ -51,7 +51,8 @@ const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
 let cursor_pos = 0;
 
-function logStuff() {
+function logStuff(from) {
+    console.log(from);
     console.log('cursor_pos = ' + cursor_pos);
     console.log('index = ' + index);
     console.log('last_index = ' + last_index);
@@ -120,6 +121,9 @@ function onKey(e) {
                 completion = '';
             }
           break;
+        case 'Delete':
+            // TODO
+            break;
         case 'Backspace':
             if (interactive_mode) {
                 break;
@@ -134,6 +138,7 @@ function onKey(e) {
                 sub = command.substring(cursor_pos);
                 command = command.substring(0, cursor_pos - 1) + sub;
                 cursorBack(1);
+                cursor_pos -= 1;
                 // write the end of the now-shortened command and move the cursor back
                 term.write(sub+'\x9B1D');
             }
@@ -182,7 +187,6 @@ function onKey(e) {
                 last_index = index;
             }
             break;
-
         case 'ArrowDown':
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
@@ -228,6 +232,7 @@ function onKey(e) {
             }
             break;
         default:
+            console.log(e);
             if (interactive_mode) {
                 ws.send(JSON.stringify(['interact', [e.key], {}]));
                 term.write(e.key);
