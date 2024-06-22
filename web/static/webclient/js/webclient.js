@@ -171,10 +171,9 @@ function onKey(e) {
                 // backspace can be in the middle of a line
                 const sub = command.substring(cursor_pos);
                 command = command.substring(0, cursor_pos - 1) + sub;
-                cursorBack(1);
                 cursor_pos -= 1;
-                // write the end of the now-shortened command and move the cursor back
-                term.write(sub+'\x9B1D');
+                // move cursor back, write shortened command + ' ', move cursor back
+                term.write('\x9B1D'+sub+' '+'\x9B1D');
             }
             break;
         case 'ArrowRight':
@@ -272,8 +271,7 @@ function onKey(e) {
             break;
         case 'c':
             if (e.domEvent.ctrlKey && !e.domEvent.altKey) {
-                const c = term.getSelection();
-                navigator.clipboard.writeText(c);
+                navigator.clipboard.writeText(term.getSelection());
             }
             break;
         default:
