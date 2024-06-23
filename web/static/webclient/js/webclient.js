@@ -42,6 +42,7 @@ let prompt = '';
 let index = 0;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
+let self_paste = false; // did we send the paste? or is the right-click menu being used?
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
@@ -338,6 +339,7 @@ function onKey(e) {
         action_done = true;
         return false;
     } else if (control_down && v_down && !action_done) {
+        self_paste = true;
         doPaste();
         action_done = true;
         return false;
@@ -352,7 +354,18 @@ function onData(d) {
         return;
     }
     if (d.length !== 1) {
-        // paste event probably, skip it
+        // paste!
+        if (!self_paste) {
+            const sub = command.substring(cursor_pos);
+            command = command.substring(0, cursor_pos) + d + sub;
+            if (completion.length > 0) {
+                cursorBack(completion.length);
+                completion = '';
+            }
+            term.write(d + sub);
+            cursor_pos += d.length;
+        }
+        self_paste = false;
         return;
     }
     const ord = d.charCodeAt(0);
