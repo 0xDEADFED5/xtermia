@@ -5,7 +5,7 @@ const term = new Terminal({
     allowProposedApi: true,
     disableStdin: false,
     fontFamily: '"Fira Code", Menlo, monospace',
-    fontSize: 18,
+    fontSize: 19,
     cursorBlink: true
 });
 
@@ -85,7 +85,13 @@ function cursorBack(len) {
     term.write(back + del);
 }
 
+function del(len) {
+    term.write('\x9B' + len + 'P');
+}
+
 function onDefault(e) {
+    // console.log(term.buffer.active.cursorX);
+    console.log(cursor_pos);
     command = command.substring(0, cursor_pos) + e + command.substring(cursor_pos);
     cursor_pos += 1;
     index = history.length - 1;
@@ -100,14 +106,15 @@ function onDefault(e) {
     const result = getCompletion(command);
     if (result[0]) {
         if (completion.length > 0) {
-            cursorBack(completion.length);
+            del(completion.length);
         }
         const str = result[1].substring(command.length);
         completion = str;
-        term.write(e + grey + str + reset);
+        // write new typed char + grey completion, reset color, move the cursor back
+        term.write(e + grey + str + reset + '\x9B' + str.length + 'D');
     } else {
         if (completion.length > 0) {
-            cursorBack(completion.length);
+            del(completion.length);
         }
         completion = '';
         term.write(e);
@@ -126,7 +133,7 @@ function onEnter() {
             index = history.indexOf(command);
         }
         if (completion.length > 0) {
-            cursorBack(completion.length);
+            del(completion.length);
             completion = '';
         }
         cursorBack(command.length);
@@ -134,15 +141,6 @@ function onEnter() {
         last_dir = 0;
         command = '';
         cursor_pos = 0;
-    }
-}
-
-function onTab() {
-    if (completion.length > 0) {
-        cursorBack(completion.length);
-        term.write(completion);
-        command = command.concat(completion);
-        completion = '';
     }
 }
 
@@ -162,10 +160,10 @@ function onDelete() {
 
 function onBackspace() {
     if (completion.length > 0) {
-        cursorBack(completion.length);
+        del(completion.length);
         completion = '';
     }
-    if (command.length !== 0 && cursor_pos > 0) {
+    if (command.length !== 0 && cursor_pos > prompt.length - 1) {
         // backspace can be in the middle of a line
         const sub = command.substring(cursor_pos);
         command = command.substring(0, cursor_pos - 1) + sub;
@@ -176,13 +174,14 @@ function onBackspace() {
 }
 
 function onArrowRight() {
+    console.log(cursor_pos);
     if (completion.length > 0) {
-        cursorBack(completion.length);
+        del(completion.length);
         term.write(completion);
         command = command.concat(completion);
         completion = '';
-    } else if (cursor_pos !== command.length) {
-        //cursor is being moved
+        cursor_pos += completion.length;
+    } else if (cursor_pos < command.length) {
         cursor_pos += 1;
         term.write('\x9B1C');
     }
@@ -191,8 +190,7 @@ function onArrowRight() {
 function onArrowUp() {
     if (index === 0) {
         return;
-    }
-    else if (last_dir !== 0) {
+    } else if (last_dir !== 0) {
         index -= 1;
     }
     if (command.length > 0) {
@@ -222,8 +220,7 @@ function onArrowDown() {
         command = history[index];
         term.write(command);
         last_dir = 1;
-    }
-    else { // we're at the bottom of history, clear it
+    } else { // we're at the bottom of history, clear it
         if (command.length > 0) {
             cursorBack(command.length);
             command = '';
@@ -237,11 +234,11 @@ function onArrowDown() {
 }
 
 function onArrowLeft() {
-    if (completion.length > 0) {
-        cursorBack(completion.length);
-        completion = '';
-    }
-    if (cursor_pos > 0) {
+    if (cursor_pos > prompt.length - 1) {
+        if (completion.length > 0) {
+            del(completion.length);
+            completion = '';
+        }
         cursor_pos -= 1;
         term.write('\x9B1D');
     }
@@ -288,8 +285,8 @@ function onKey(e) {
                     onArrowDown();
                     return false;
                 case 'Home':
-                    if (cursor_pos !== 0) {
-                        term.write('\x9B' + cursor_pos + 'D');
+                    if (cursor_pos >= prompt.length) {
+                        term.write('\x9B' + (cursor_pos - prompt.length + 1) + 'D');
                         cursor_pos = 0;
                     }
                     return false;
@@ -298,6 +295,9 @@ function onKey(e) {
                         term.write('\x9B' + (command.length - cursor_pos) + 'C');
                         cursor_pos = command.length;
                     }
+                    return false;
+                case 'Delete':
+                    onDelete();
                     return false;
                 default:
                     break;
@@ -350,7 +350,6 @@ function onKey(e) {
 function onData(d) {
     if (interactive_mode) {
         ws.send(JSON.stringify(['interact', [d], {}]));
-        term.write(d);
         return;
     }
     if (d.length !== 1) {
@@ -384,6 +383,7 @@ function onData(d) {
                 onArrowRight()
                 break;
             case '[3~': // Delete
+                console.log('del!');
                 onDelete();
                 break;
         }
@@ -396,7 +396,7 @@ function onData(d) {
                 onBackspace();
                 break;
             case '\t': // TAB
-                onTab();
+                onArrowRight();
                 break;
             case '\x03': // CTRL+C
                 // term.getSelection() doesn't work from here ??
