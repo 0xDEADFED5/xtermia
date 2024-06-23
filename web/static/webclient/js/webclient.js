@@ -38,6 +38,7 @@ let history = [];
 let player_commands = [];
 let command = '';
 let completion = '';
+let prompt = '';
 let index = 0;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
@@ -416,10 +417,10 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            term.write(msg[1][0]);
+            term.write(msg[1][0] + prompt);
             break;
         case 'prompt':
-            term.write(msg[1][0]);
+            prompt = msg[1][0];
             break;
         case 'audio':
             audio.pause();
