@@ -6,13 +6,16 @@ This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/t
 - Really fast, does terminal stuff
 - Up/down arrow to scroll through command history
 - Start typing to see completion suggestions, Right-arrow or Tab to accept the current suggestion
+- Ctrl+C to copy, Ctrl+V to paste (will ask for permission)
 - At login Evennia will send available commands, these will be used for completion suggestions as well as history
 - Tells Evennia the terminal width/height at startup and on resize
-- Evennia can tell webclient to enter "interactive mode", which makes arrow keys move the cursor around
 - Uses "CACHE BUSTERRRR" from https://github.com/InspectorCaracal/evelite-client/tree/main
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 - See commands/examples.py for examples using the OOB commands
+
+### Todo
+- Interactive terminal example
 
 ### Installation
 Back up your existing game folder.
