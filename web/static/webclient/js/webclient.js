@@ -46,15 +46,6 @@ const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
 let cursor_pos = 0;
 
-function logStuff(from) {
-    console.log(from);
-    console.log('cursor_pos = ' + cursor_pos);
-    console.log('index = ' + index);
-    console.log('last_index = ' + last_index);
-    console.log('command = ' + command);
-    console.log('history = ' + history);
-}
-
 function doPaste() {
     navigator.clipboard.readText()
         .then(text => {
@@ -425,6 +416,9 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
+            term.write(msg[1][0]);
+            break;
+        case 'prompt':
             term.write(msg[1][0]);
             break;
         case 'audio':

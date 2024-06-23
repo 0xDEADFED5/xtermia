@@ -296,7 +296,9 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
             text = _RE_SCREENREADER_REGEX.sub("", text)
             args[0] = text
         else:
-            args[0] = parse_ansi(text, strip_ansi=False, xterm256=True, mxp=False) + "\n"
+            args[0] = parse_ansi(text, strip_ansi=False, xterm256=True, mxp=False)
+        if not prompt: 
+            args[0] += '\r\n'
         cmd = "prompt" if prompt else "text"
         # send to client on required form [cmdname, args, kwargs]
         self.sendLine(json.dumps([cmd, args, kwargs]))
