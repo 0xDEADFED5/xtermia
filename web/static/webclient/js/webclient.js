@@ -106,11 +106,6 @@ function onDefault(e) {
 }
 
 function onEnter() {
-    if (interactive_mode) {
-        ws.send(JSON.stringify(['interact', [e.key], {}]));
-        term.write('\r\n');
-        return;
-    }
     if (command !== '') {
         ws.send(JSON.stringify(['text', [command], {}]));
         if (history.length > max_len) {
