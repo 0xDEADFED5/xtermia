@@ -295,24 +295,16 @@ function onKey(e) {
                     v_down = false;
                     break;
                 case 'ArrowLeft':
-                    if (arrow_left_down) {
-                        arrow_left_down = false;
-                    }
+                    arrow_left_down = false;
                     return false;
                 case 'ArrowRight':
-                    if (arrow_right_down) {
-                        arrow_right_down = false;
-                    }
+                    arrow_right_down = false;
                     return false;
                 case 'ArrowUp':
-                    if (arrow_up_down) {
-                        arrow_up_down = false;
-                    }
+                    arrow_up_down = false;
                     return false;
                 case 'ArrowDown':
-                    if (arrow_down_down) {
-                        arrow_down_down = false;
-                    }
+                    arrow_down_down = false;
                     return false;
                 default:
                     break;
