@@ -77,7 +77,6 @@ function cursorBack(len) {
 }
 
 function onDefault(e) {
-    console.log('default!');
     command = command.substring(0, cursor_pos) + e + command.substring(cursor_pos);
     cursor_pos += 1;
     index = history.length - 1;
@@ -441,7 +440,6 @@ ws.onclose = function () {
     ws_ready = false;
 };
 ws.onmessage = function (e) {
-    // console.log(e.data);
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
