@@ -91,7 +91,6 @@ function del(len) {
 
 function onDefault(e) {
     // console.log(term.buffer.active.cursorX);
-    console.log(cursor_pos);
     command = command.substring(0, cursor_pos) + e + command.substring(cursor_pos);
     cursor_pos += 1;
     index = history.length - 1;
@@ -163,25 +162,24 @@ function onBackspace() {
         del(completion.length);
         completion = '';
     }
-    if (command.length !== 0 && cursor_pos > prompt.length - 1) {
+    if (command.length !== 0 && cursor_pos > 0) {
         // backspace can be in the middle of a line
         const sub = command.substring(cursor_pos);
         command = command.substring(0, cursor_pos - 1) + sub;
         cursor_pos -= 1;
         // move cursor back, write shortened command + ' ', move cursor back
-        term.write('\x9B1D' + sub + ' ' + '\x9B1D');
+        term.write('\x9B1D' + sub + ' ' + '\x9B' + (sub.length + 1) +'D');
     }
 }
 
 function onArrowRight() {
-    console.log(cursor_pos);
     if (completion.length > 0) {
         del(completion.length);
         term.write(completion);
         command = command.concat(completion);
-        completion = '';
         cursor_pos += completion.length;
-    } else if (cursor_pos < command.length) {
+        completion = '';
+    } else if (cursor_pos < command.length - 1) {
         cursor_pos += 1;
         term.write('\x9B1C');
     }
@@ -383,7 +381,6 @@ function onData(d) {
                 onArrowRight()
                 break;
             case '[3~': // Delete
-                console.log('del!');
                 onDelete();
                 break;
         }
