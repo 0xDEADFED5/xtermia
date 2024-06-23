@@ -39,7 +39,7 @@ let player_commands = [];
 let command = '';
 let completion = '';
 let prompt = '';
-let index = 0;
+let index = -1;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
@@ -81,13 +81,17 @@ function getCompletion(c) {
 }
 
 function cursorBack(len) {
-    const back = '\x9B' + len + 'D';
-    const del = '\x9B' + len + 'P';
-    term.write(back + del);
+    if (len > 0) {
+        const back = '\x9B' + len + 'D';
+        const del = '\x9B' + len + 'P';
+        term.write(back + del);
+    }
 }
 
 function del(len) {
-    term.write('\x9B' + len + 'P');
+    if (len > 0) {
+        term.write('\x9B' + len + 'P');
+    }
 }
 
 function onDefault(e) {
@@ -188,47 +192,36 @@ function onArrowRight() {
 }
 
 function onArrowUp() {
-    if (index === 0) {
+    if (index === -1) {
         return;
-    } else if (last_dir !== 0) {
+    } else if (last_dir !== 0 && index > 0) {
         index -= 1;
     }
-    if (command.length > 0) {
-        cursorBack(command.length);
-        command = '';
-    }
     if (completion.length > 0) {
-        cursorBack(completion.length);
-        completion = '';
+        del(completion.length);
     }
+    cursorBack(cursor_pos);
+    command = '';
     command = history[index];
     term.write(command);
+    cursor_pos = command.length;
     last_dir = 2;
 }
 
 function onArrowDown() {
     if (index < history.length - 1) {
         index += 1;
-        if (command.length > 0) {
-            cursorBack(command.length);
-            command = '';
-        }
-        if (completion.length > 0) {
-            cursorBack(completion.length);
-            completion = '';
-        }
+        cursorBack(cursor_pos);
+        completion = '';
         command = history[index];
         term.write(command);
+        cursor_pos = command.length;
         last_dir = 1;
-    } else { // we're at the bottom of history, clear it
-        if (command.length > 0) {
-            cursorBack(command.length);
-            command = '';
-        }
-        if (completion.length > 0) {
-            cursorBack(completion.length);
-            completion = '';
-        }
+    } else if (cursor_pos !== 0) { // we're at the bottom of history, clear it
+        cursorBack(cursor_pos);
+        command = '';
+        completion = '';
+        cursor_pos = 0;
         last_dir = 0;
     }
 }
@@ -241,6 +234,20 @@ function onArrowLeft() {
         }
         cursor_pos -= 1;
         term.write('\x9B1D');
+    }
+}
+
+function onHome() {
+    if (cursor_pos > 0) {
+        term.write('\x9B' + cursor_pos + 'D');
+        cursor_pos = 0;
+    }
+}
+
+function onEnd() {
+    if (cursor_pos < command.length) {
+        term.write('\x9B' + (command.length - cursor_pos) + 'C');
+        cursor_pos = command.length;
     }
 }
 
@@ -285,16 +292,10 @@ function onKey(e) {
                     onArrowDown();
                     return false;
                 case 'Home':
-                    if (cursor_pos >= prompt.length) {
-                        term.write('\x9B' + (cursor_pos - prompt.length + 1) + 'D');
-                        cursor_pos = 0;
-                    }
+                    onHome();
                     return false;
                 case 'End':
-                    if (cursor_pos !== command.length) {
-                        term.write('\x9B' + (command.length - cursor_pos) + 'C');
-                        cursor_pos = command.length;
-                    }
+                    onEnd();
                     return false;
                 case 'Delete':
                     onDelete();
@@ -427,7 +428,6 @@ ws.onclose = function () {
 };
 ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
-    console.log(msg);
     switch (msg[0]) {
         case 'text':
             if (Object.keys(msg[2]).length !== 0 && !('from_channel' in msg[2])) {
