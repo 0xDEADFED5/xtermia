@@ -42,6 +42,7 @@ def at_post_puppet(self, **kwargs):
 ```
 
 Example for setting a default prompt of `>` at login:
+
 After `sessions = self.sessions.get()` in the example above add this:
 
 ```
