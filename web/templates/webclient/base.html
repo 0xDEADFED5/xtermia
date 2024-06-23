@@ -32,19 +32,19 @@
 {#    <link rel="stylesheet" type="text/css" href="{% static "webclient/css/normalize.css" %}?{{client_css_version}}">#}
     <script language="javascript" type="text/javascript">
         {% if websocket_enabled %}
-            var wsactive = true;
+            const wsactive = true;
         {% else %}
-            var wsactive = false;
+            const wsactive = false;
         {% endif %}
         {% if browser_sessid %}
-           var csessid = "{{browser_sessid}}";
+            const csessid = "{{browser_sessid}}";
         {% else %}
-           var csessid = false;
+            const csessid = false;
         {% endif %}
         {% if websocket_url %}
-            var wsurl = "{{websocket_url}}";
+            const wsurl = "{{websocket_url}}";
         {% else %}
-            var wsurl = "ws://" + this.location.hostname + ":{{websocket_port}}";
+            const wsurl = "ws://" + this.location.hostname + ":{{websocket_port}}";
         {% endif %}
     </script>
     <script src="{% static "webclient/js/xterm.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>

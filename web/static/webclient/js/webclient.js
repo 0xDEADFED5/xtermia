@@ -39,7 +39,7 @@ let player_commands = [];
 let command = '';
 let completion = '';
 let index = 0;
-let last_index = -2;
+let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
@@ -53,6 +53,23 @@ function logStuff(from) {
     console.log('last_index = ' + last_index);
     console.log('command = ' + command);
     console.log('history = ' + history);
+}
+
+function doPaste() {
+    navigator.clipboard.readText()
+        .then(text => {
+            const sub = command.substring(cursor_pos);
+            command = command.substring(0, cursor_pos) + text + sub;
+            if (completion.length > 0) {
+                cursorBack(completion.length);
+                completion = '';
+            }
+            term.write(text + sub);
+            cursor_pos += text.length;
+        })
+        .catch(err => {
+            console.log('Clipboard error: ', err);
+        });
 }
 
 function getCompletion(c) {
@@ -73,14 +90,13 @@ function cursorBack(len) {
     const back = '\x9B' + len + 'D';
     const del = '\x9B' + len + 'P';
     term.write(back + del);
-    // term.write(back + ' '.repeat(len));
 }
 
 function onDefault(e) {
     command = command.substring(0, cursor_pos) + e + command.substring(cursor_pos);
     cursor_pos += 1;
     index = history.length - 1;
-    last_index = -1;
+    last_dir = 0;
     // insert characters after left arrow has been pressed
     if (cursor_pos !== command.length) {
         const sub = command.substring(cursor_pos);
@@ -121,8 +137,8 @@ function onEnter() {
             completion = '';
         }
         cursorBack(command.length);
-        term.write(command_color + command + reset + '\n');
-        last_index = -2;
+        term.write(command_color + command + reset + '\r\n');
+        last_dir = 0;
         command = '';
         cursor_pos = 0;
     }
@@ -180,13 +196,28 @@ function onArrowRight() {
 }
 
 function onArrowUp() {
-    if (index - 1 >= 0 && index === last_index && last_index !== -1) {
+    if (index === 0) {
+        return;
+    }
+    else if (last_dir !== 0) {
         index -= 1;
     }
-    if (index !== last_index && history.length > 0) {
-        if (index === -1) {
-            index = history.length - 1;
-        }
+    if (command.length > 0) {
+        cursorBack(command.length);
+        command = '';
+    }
+    if (completion.length > 0) {
+        cursorBack(completion.length);
+        completion = '';
+    }
+    command = history[index];
+    term.write(command);
+    last_dir = 2;
+}
+
+function onArrowDown() {
+    if (index < history.length - 1) {
+        index += 1;
         if (command.length > 0) {
             cursorBack(command.length);
             command = '';
@@ -197,34 +228,18 @@ function onArrowUp() {
         }
         command = history[index];
         term.write(command);
-        last_index = index;
+        last_dir = 1;
     }
-}
-
-function onArrowDown() {
-    if (completion.length > 0) {
-        cursorBack(completion.length);
-        completion = '';
-    }
-    if (index === -1) {
-        return;
-    }
-    if (index + 1 <= history.length - 1 && last_index === index) {
-        index += 1;
-    }
-    if (index === history.length - 1 && last_index === index) {
-        cursorBack(command.length);
-        command = '';
-        index = -1;
-        cursor_pos = 0;
-        return;
-    }
-    if (index !== last_index) {
-        cursorBack(command.length);
-        command = history[index];
-        term.write(command);
-        last_index = index;
-        cursor_pos = command.length;
+    else { // we're at the bottom of history, clear it
+        if (command.length > 0) {
+            cursorBack(command.length);
+            command = '';
+        }
+        if (completion.length > 0) {
+            cursorBack(completion.length);
+            completion = '';
+        }
+        last_dir = 0;
     }
 }
 
@@ -279,6 +294,18 @@ function onKey(e) {
                     arrow_down_down = true;
                     onArrowDown();
                     return false;
+                case 'Home':
+                    if (cursor_pos !== 0) {
+                        term.write('\x9B' + cursor_pos + 'D');
+                        cursor_pos = 0;
+                    }
+                    return false;
+                case 'End':
+                    if (cursor_pos !== command.length) {
+                        term.write('\x9B' + (command.length - cursor_pos) + 'C');
+                        cursor_pos = command.length;
+                    }
+                    return false;
                 default:
                     break;
             }
@@ -319,7 +346,7 @@ function onKey(e) {
         action_done = true;
         return false;
     } else if (control_down && v_down && !action_done) {
-        // doPaste();
+        doPaste();
         action_done = true;
         return false;
     }
@@ -333,60 +360,30 @@ function onData(d) {
         return;
     }
     if (d.length !== 1) {
-        // paste
-        const sub = command.substring(cursor_pos);
-        command = command.substring(0, cursor_pos) + d + sub;
-        term.write(d + sub);
-        cursor_pos += d.length;
+        // paste event probably, skip it
         return;
     }
     const ord = d.charCodeAt(0);
+    console.log(ord);
+    console.log(JSON.stringify(d));
     if (ord === 0x1b) {
         switch (d.substring(1)) {
             case '[A': // Up arrow
                 onArrowUp();
                 break;
-
             case '[B': // Down arrow
                 onArrowDown();
                 break;
-
             case '[D': // Left Arrow
                 onArrowLeft();
                 break;
-
             case '[C': // Right Arrow
                 onArrowRight()
                 break;
-
             case '[3~': // Delete
                 onDelete();
                 break;
-
-            case '[F': // End
-                if (cursor_pos !== command.length) {
-                    term.write('\x9B' + (command.length - cursor_pos) + 'C');
-                    cursor_pos = command.length;
-                }
-                break;
-
-            case '[H': // Home
-                if (cursor_pos !== 0) {
-                    term.write('\x9B' + cursor_pos + 'D');
-                    cursor_pos = 0;
-                }
-                break;
-
-            case 'b': // ALT + LEFT
-                break;
-
-            case 'f': // ALT + RIGHT
-                break;
-
-            case '\x7F': // CTRL + BACKSPACE
-                break;
         }
-
     } else if (ord < 32 || ord === 0x7f) {
         switch (d) {
             case '\r': // ENTER
