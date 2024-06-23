@@ -43,6 +43,7 @@ let index = 0;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
+let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
@@ -122,6 +123,7 @@ function onDefault(e) {
 
 function onEnter() {
     if (command !== '') {
+        command_sent = true;
         ws.send(JSON.stringify(['text', [command], {}]));
         if (history.length > max_len) {
             history.shift();
@@ -168,7 +170,7 @@ function onBackspace() {
         command = command.substring(0, cursor_pos - 1) + sub;
         cursor_pos -= 1;
         // move cursor back, write shortened command + ' ', move cursor back
-        term.write('\x9B1D' + sub + ' ' + '\x9B' + (sub.length + 1) +'D');
+        term.write('\x9B1D' + sub + ' ' + '\x9B' + (sub.length + 1) + 'D');
     }
 }
 
@@ -425,9 +427,21 @@ ws.onclose = function () {
 };
 ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
+    console.log(msg);
     switch (msg[0]) {
         case 'text':
-            term.write(msg[1][0] + prompt);
+            if (Object.keys(msg[2]).length !== 0 && !('from_channel' in msg[2])) {
+                // display prompt for any command output, but not channels
+                command_sent = false
+                term.write(msg[1][0] + reset + prompt);
+            }
+            else if (command_sent) {
+                command_sent = false
+                term.write(msg[1][0] + reset + prompt);
+            }
+            else {
+                term.write(msg[1][0] + reset);
+            }
             break;
         case 'prompt':
             prompt = msg[1][0];

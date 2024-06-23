@@ -1,6 +1,8 @@
 ## xterm.js webclient for Evennia
 This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/tree/main) game with the [xterm.js](https://github.com/xtermjs/xterm.js) terminal emulator.
 
+![screenshot](./term.png)
+
 ### Features
 - No more input box, type directly into the terminal like it's 1984
 - Really fast, does terminal stuff
