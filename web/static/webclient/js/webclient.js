@@ -364,8 +364,6 @@ function onData(d) {
         return;
     }
     const ord = d.charCodeAt(0);
-    console.log(ord);
-    console.log(JSON.stringify(d));
     if (ord === 0x1b) {
         switch (d.substring(1)) {
             case '[A': // Up arrow
