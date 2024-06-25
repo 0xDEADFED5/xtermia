@@ -88,6 +88,8 @@ class CmdInteract(Command):
                     val = marked[(cursor_x,cursor_y)]  # is current coordinate marked(True) or not
                     if (val):
                         caller.msg(insert_text=' ') # it's being unmarked, overwrite the 'X' with ' ' to remove it
+                    else:
+                        caller.msg(insert_text='X')
                     marked[(cursor_x,cursor_y)] = not val  # invert the value
                 else:
                     marked[(cursor_x,cursor_y)] = True
