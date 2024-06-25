@@ -144,6 +144,9 @@ function onEnter() {
             del(completion.length);
             completion = '';
         }
+        if (prompt.length > 0) {
+            cursorBack(prompt.length);
+        }
         cursorBack(command.length);
         term.write(command_color + command + reset + '\r\n');
         last_dir = 0;
@@ -561,6 +564,7 @@ ws.onmessage = function (e) {
             prompt = msg[1][0];
             break;
         case 'audio':
+            console.log(audio);
             audio.pause();
             audio.src = msg[1][0];
             audio.play();
