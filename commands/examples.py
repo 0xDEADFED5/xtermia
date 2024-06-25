@@ -100,7 +100,7 @@ class CmdInteract(Command):
         # the arguments are: [column,row,text]
         # negative column value moves cursor left, positive value moves it right
         # negative row value moves cursor down, positive value moves it up
-        # it's x,y coordinates basically with (0,0) being wherever cursor was at interactive_start
+        # it's x,y coordinates basically with (0,0) being beginning of row at interactive_start
         caller.msg(pos_text=(0,1,label))
         caller.ndb.cursor_x = cursor_x
         caller.ndb.cursor_y = cursor_y
@@ -111,9 +111,9 @@ class CmdInteract(Command):
             label = LABEL.format(x=0,y=0)
             template = TEMPLATE.format(label=label)
             caller.msg(raw_text=template)  # raw_text sends the string as-is, default text will append '\r\n'
-            add_interact_callback(caller, self.i_callback)
-            caller.msg(interactive_start='')
-            caller.msg(pos_text=(0,1,label))
+            add_interact_callback(caller, self.i_callback)  # this callback gets called for every keypress after interactive_start
+            caller.msg(interactive_start='')  # put the webclient into interactive mode
+            caller.msg(pos_text=(0,1,label))  # see the explanation of pos_text above
             # place initial cursor position right 2 places and up 5 places from the bottom left of template
             # see pos_text above for more detail on how relative positions work
             # this matches 0,0 inside the box in the TEMPLATE above
@@ -124,7 +124,7 @@ class CmdInteract(Command):
 
 class CmdUpdateCompletions(Command):
     """
-    update the list of command completions on the webclient
+    update the list of command completion hints on the webclient
     """
     key = 'updatecompletions'
     help_category = 'Examples'
@@ -173,4 +173,4 @@ class CmdClearscreen(Command):
 
     def func(self):
         caller = self.caller
-        caller.msg("\033[2J")
+        caller.msg(text=('\033[2J', {'type': 'clearscreen'}))
