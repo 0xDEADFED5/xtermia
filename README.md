@@ -56,14 +56,6 @@ def at_post_puppet(self, **kwargs):
 	super().at_post_puppet(**kwargs)
 ```
 
-Example for setting a default prompt of `>` at login:
-
-After `sessions = self.sessions.get()` in the example above add this:
-
-```
-sessions[0].msg(prompt='>')
-```
-
 ### File sources
 - addon-fit.js = npm install @xterm/addon-fit
 - addon-unicode11.js = npm install @xterm/addon-unicode11
