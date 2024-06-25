@@ -367,7 +367,8 @@ function onData(d) {
         ws.send(JSON.stringify(['interact', [d], {}]));
         return;
     }
-    if (d.length !== 1) {
+    const ord = d.charCodeAt(0);
+    if (d.length !== 1 && ord !== 0x1b) {  // hacky paste detection for right-click paste, avoid control codes
         // paste!
         if (!self_paste) {
             const sub = command.substring(cursor_pos);
@@ -382,7 +383,6 @@ function onData(d) {
         self_paste = false;
         return;
     }
-    const ord = d.charCodeAt(0);
     if (ord === 0x1b) {
         switch (d.substring(1)) {
             case '[A': // Up arrow
