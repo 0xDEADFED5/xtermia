@@ -80,7 +80,7 @@ class CmdInteract(Command):
                         coord_str += str(k) + ' '
                 if coord_str != '':
                     caller.msg(raw_text=f"The following coords were marked:\r\n{coord_str}\r\n")
-                # any text with a type (other than channel) automatically gets a prompt:
+                # any text with a type gets a prompt (if set):
                 caller.msg(text=('Interactive demo exited.', {'type': 'interact'}))
                 return
             case ' ':  # space is pressed
@@ -95,12 +95,12 @@ class CmdInteract(Command):
             case _:
                 return
         label = LABEL.format(x=cursor_x,y=cursor_y)
-        # place label 1 line up from where interactive_start was sent
         # pos_text and pos_cursor take a relative position from the START of the line when interactive_start was sent
         # the arguments are: [column,row,text]
         # negative column value moves cursor left, positive value moves it right
         # negative row value moves cursor down, positive value moves it up
         # it's x,y coordinates basically with (0,0) being beginning of row at interactive_start
+        # place label 1 line up from where interactive_start was sent:
         caller.msg(pos_text=(0,1,label))
         caller.ndb.cursor_x = cursor_x
         caller.ndb.cursor_y = cursor_y

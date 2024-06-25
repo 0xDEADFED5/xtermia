@@ -486,7 +486,7 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            if (msg[2].type !== undefined && !(msg[2].type === 'from_channel')) {
+            if (msg[2].type !== undefined) {
                 // display prompt for any command output, but not channels
                 command_sent = false;
                 term.write(msg[1][0] + reset + prompt);
