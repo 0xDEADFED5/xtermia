@@ -151,6 +151,7 @@ class CmdTestAudio(Command):
     def func(self):
         caller = self.caller
         caller.msg(audio='/static/webclient/audio/test.m4a')
+        caller.msg(text=('Playing audio ...', {'type': 'audio'}))
 
 
 class CmdPauseAudio(Command):
@@ -163,6 +164,7 @@ class CmdPauseAudio(Command):
     def func(self):
         caller = self.caller
         caller.msg(audio_pause='')
+        caller.msg(text=('Pausing audio ...', {'type': 'audio'}))
 
 class CmdClearscreen(Command):
     """
