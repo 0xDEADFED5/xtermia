@@ -98,7 +98,6 @@ function del(len) {
 }
 
 function onDefault(e) {
-    // console.log(term.buffer.active.cursorX);
     command = command.substring(0, cursor_pos) + e + command.substring(cursor_pos);
     cursor_pos += 1;
     index = history.length - 1;
@@ -564,7 +563,6 @@ ws.onmessage = function (e) {
             prompt = msg[1][0];
             break;
         case 'audio':
-            console.log(audio);
             audio.pause();
             audio.src = msg[1][0];
             audio.play();
