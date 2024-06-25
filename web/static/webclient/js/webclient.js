@@ -42,7 +42,10 @@ let prompt = '';
 let index = -1;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
+let cursor_x = 0;  // these are used during interactive mode to keep track of relative cursor position
+let cursor_y = 0;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
+let self_write = false; // if true, don't do onData events
 let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
@@ -69,15 +72,15 @@ function doPaste() {
 function getCompletion(c) {
     for (let i = 0; i < history.length; i++) {
         if (history[i].length > c.length && history[i].startsWith(c)) {
-            return [true, history[i]]
+            return [true, history[i]];
         }
     }
     for (let i = 0; i < player_commands.length; i++) {
         if (player_commands[i].length > c.length && player_commands[i].startsWith(c)) {
-            return [true, player_commands[i]]
+            return [true, player_commands[i]];
         }
     }
-    return [false]
+    return [false];
 }
 
 function cursorBack(len) {
@@ -261,6 +264,13 @@ let arrow_down_down = false;
 let action_done = false;
 
 function onKey(e) {
+    if (self_write) {
+        self_write = false;
+        return false;
+    }
+    if (interactive_mode) {
+        return true;  // go straight to onData
+    }
     switch (e.type) {
         case 'keypress':
             return true; // pass the event along
@@ -349,6 +359,10 @@ function onKey(e) {
 }
 
 function onData(d) {
+    if (self_write) {
+        self_write = false;
+        return;  // don't process our own messages
+    }
     if (interactive_mode) {
         ws.send(JSON.stringify(['interact', [d], {}]));
         return;
@@ -398,18 +412,58 @@ function onData(d) {
             case '\t': // TAB
                 onArrowRight();
                 break;
-            case '\x03': // CTRL+C
-                // term.getSelection() doesn't work from here ??
-                // handle in onKey instead
-                break;
-            case '\x16': // CTRL+V
-                // handle in onKey instead
-                break;
         }
 
     } else {
         onDefault(d);
     }
+}
+
+function relPos(x, y) {
+    x = x - cursor_x;
+    y = y - cursor_y;
+    if (y > 0) {
+        writeSelf('\x9B' + y + 'A'); // cursor up N
+    } else if (y < 0) {
+        writeSelf('\x9B' + (y * -1) + 'B'); // cursor down N
+    }
+    if (x > 0) {
+        writeSelf('\x9B' + x + 'C'); // cursor forward N
+    } else if (x < 0) {
+        writeSelf('\x9B' + (x * -1) + 'D'); // cursor back N
+    }
+    cursor_x = x;
+    cursor_y = y;
+}
+
+function writeSelf(d, insert=false) {
+    if (interactive_mode) {
+        self_write = true;
+        term.write(d);
+        if (insert) {
+            term.write('\x9B' + d.length + 'D'); // cursor back N
+        }
+    } else {
+        term.write(d);
+    }
+}
+
+function cursorHome() {
+    // move cursor to where it was when interactive_mode started
+    if (cursor_x > 0) {
+        writeSelf('\x9B' + cursor_x + 'D');
+    }
+    else if (cursor_x < 0) {
+        writeSelf('\x9B' + (cursor_x * -1) + 'C');
+    }
+    if (cursor_y > 0) {
+        writeSelf('\x9B' + cursor_y + 'B');
+    }
+    else if (cursor_x < 0) {
+        writeSelf('\x9B' + (cursor_y * -1) + 'A');
+    }
+    cursor_x = 0;
+    cursor_y = 0;
 }
 
 term.onData(e => onData(e));
@@ -430,18 +484,78 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            if (Object.keys(msg[2]).length !== 0 && !('from_channel' in msg[2])) {
+            if (msg[2].type !== undefined && !(msg[2].type === 'from_channel')) {
                 // display prompt for any command output, but not channels
-                command_sent = false
+                command_sent = false;
                 term.write(msg[1][0] + reset + prompt);
-            }
-            else if (command_sent) {
-                command_sent = false
+            } else if (command_sent) {
+                command_sent = false;
                 term.write(msg[1][0] + reset + prompt);
-            }
-            else {
+            } else {
                 term.write(msg[1][0] + reset);
             }
+            break;
+        case 'raw_text':  // default text messages get /r/n appended to them before being sent, this doesn't
+            writeSelf(msg[1][0]);
+            break;
+        case 'insert_text':  // print raw_text and move the cursor back
+            writeSelf(msg[1][0], true);
+            break;
+        case 'cursor_up':
+            cursor_y += 1;
+            writeSelf('\x1B[A');
+            break;
+        case 'cursor_down':
+            cursor_y -= 1;
+            writeSelf('\x1B[B');
+            break;
+        case 'cursor_right':
+            cursor_x += 1;
+            writeSelf('\x1B[C');
+            break;
+        case 'cursor_left':
+            cursor_x -= 1;
+            writeSelf('\x1B[D');
+            break;
+        case 'cursor_home':  // move the cursor back to where interactive mode started
+            cursorHome();
+            break;
+        case 'clear_line':
+            /* command signature: clear_line=row
+              moves cursor to line relative from where interactive_start was sent and clears it.
+              cursor is then moved back to where it was.
+              positive values go up, negative go down, and 0 clears the current line */
+            cursorHome();
+            if (msg[1][0] > 0) {
+                writeSelf('\x9B' + msg[1][0] + 'A');
+            }
+            else if (msg[1][0] < 0) {
+                writeSelf('\x9B' + (msg[1][0] * -1) + 'B');
+            }
+            cursor_y += msg[1][0];
+            writeSelf('\x9B2K'); // clear line
+            cursorHome();
+            break;
+        case 'pos_cursor':
+            // move cursor to relative position from where interactive_start was issued, same rules as below
+            // command signature: pos_cursor=[row, column]
+            relPos(msg[1][0], msg[1][1]);
+            break;
+        case 'pos_text':
+            /* print text at relative position from where interactive_start was sent
+               command signature: pos_text=[column, row, msg]
+               relative position (column,row) from the beginning of the line where interactive_start was sent
+               positive numbers go up (row), or right (column)
+               negative numbers go down (row), or left (column)
+               i.e. position[0,1,'msg', 4] goes straight up one line, prints 'msg ' at start of row, and returns the cursor */
+            const old_x = cursor_x;
+            const old_y = cursor_y;
+            cursorHome();
+            relPos(msg[1][0], msg[1][1]);
+            writeSelf(msg[1][2], true);
+            relPos(old_x, old_y);
+            cursor_x = old_x;
+            cursor_y = old_y;
             break;
         case 'prompt':
             prompt = msg[1][0];
@@ -458,9 +572,13 @@ ws.onmessage = function (e) {
             break;
         case 'interactive_start':
             interactive_mode = true;
+            cursor_x = 0;
+            cursor_y = 0;
+            term.write('\x9Bs'); // save cursor
             break;
         case 'interactive_end':
             interactive_mode = false;
+            term.write('\x9Bu'); // restore cursor
             break;
         case 'player_commands':
             player_commands = msg[1];

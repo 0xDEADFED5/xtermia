@@ -26,7 +26,7 @@ as argument.
 
 """
 from evennia.utils import logger
-
+from world.callbacks import fire_interact_callbacks
 
 def term_size(session, *args, **kwargs):
     if args:
@@ -35,7 +35,7 @@ def term_size(session, *args, **kwargs):
 
 def interact(session, *args, **kwargs):
     if args:
-        logger.log_err(f"Not implemented yet: interact {str(args)} {str(kwargs)}")
+        fire_interact_callbacks(args[0])
 
 
 def default(session, cmdname, *args, **kwargs):
