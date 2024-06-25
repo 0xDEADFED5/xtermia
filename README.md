@@ -19,9 +19,6 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 - See commands/examples.py for examples using the OOB commands
 
-### Todo
-- Interactive terminal example
-
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
 NOTE: 
