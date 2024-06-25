@@ -9,15 +9,15 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Really fast, does terminal stuff
 - Up/down arrow to scroll through command history
 - Start typing to see completion suggestions, Right-arrow or Tab to accept the current suggestion
-- Ctrl+C to copy, Ctrl+V to paste (will ask for permission)
-- At login Evennia will send available commands, these will be used for completion suggestions as well as history
+- Ctrl+C to copy, Ctrl+V to paste in addition to the right-click copy/paste
+- Clickable web links
+- Completion suggestions based on Evennia commands available at login
 - Tells Evennia the terminal width/height at startup and on resize
 - Sound/music (see "commands/examples.py")
 - Interactive terminal mode (see "commands/examples.py") for an example, or type 'interact' inside Evennia
 - Uses "CACHE BUSTERRRR" from https://github.com/InspectorCaracal/evelite-client/tree/main
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
-- See commands/examples.py for examples using the OOB commands
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
