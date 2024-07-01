@@ -480,15 +480,19 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            if (msg[2].type !== undefined) {
-                // display prompt for any command output, but not channels
-                command_sent = false;
-                term.write(msg[1][0] + reset + prompt + command);
-            } else if (command_sent) {
-                command_sent = false;
-                term.write(msg[1][0] + reset + prompt + command);
-            } else {
-                term.write(msg[1][0] + reset);
+            // move the prompt, command buffer, and completion text after whatever we just received
+            if (completion.length > 0) {
+                del(completion.length);
+            }
+            if (prompt.length > 0) {
+                cursorBack(prompt.length);
+            }
+            if (command.length > 0) {
+                cursorBack(command.length);
+            }
+            term.write(msg[1][0] + reset + prompt + command);
+            if (completion.length > 0) {
+                term.write(grey + completion + reset + '\x9B' + completion.length + 'D');
             }
             break;
         case 'raw_text':  // default text messages get /r/n appended to them before being sent, this doesn't
