@@ -47,6 +47,7 @@ let cursor_y = 0;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
 let self_write = false; // if true, don't do onData events
 let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
+let last_key_enter = false;
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
@@ -134,10 +135,12 @@ function onEnter() {
         if (history.length > max_len) {
             history.shift();
         }
-        if (!history.includes(command)) {
+        const found_index = history.indexOf(command);
+        if (found_index === -1) {
             index = history.push(command) - 1;
         } else {
-            index = history.indexOf(command);
+            history.splice(found_index, 1);
+            index = history.push(command) - 1;
         }
         if (completion.length > 0) {
             del(completion.length);
