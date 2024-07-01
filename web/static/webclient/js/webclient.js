@@ -47,7 +47,7 @@ let cursor_y = 0;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
 let self_write = false; // if true, don't do onData events
 let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
-let last_key_enter = false;
+let enter_pressed = false;
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
@@ -152,8 +152,8 @@ function onEnter() {
         cursorBack(command.length);
         term.write(command_color + command + reset + '\r\n');
         last_dir = 0;
-        command = '';
-        cursor_pos = 0;
+        enter_pressed = true;
+        cursor_pos = command.length;
     }
 }
 
@@ -262,10 +262,6 @@ function onEnd() {
 let control_down = false;
 let c_down = false;
 let v_down = false;
-let arrow_left_down = false;
-let arrow_right_down = false;
-let arrow_up_down = false;
-let arrow_down_down = false;
 let action_done = false;
 
 function onKey(e) {
@@ -291,28 +287,31 @@ function onKey(e) {
                     v_down = true;
                     break;
                 case 'ArrowLeft':
-                    arrow_left_down = true;
+                    enter_pressed = false;
                     onArrowLeft();
                     return false;
                 case 'ArrowRight':
-                    arrow_right_down = true;
+                    enter_pressed = false;
                     onArrowRight();
                     return false;
                 case 'ArrowUp':
-                    arrow_up_down = true;
+                    enter_pressed = false;
                     onArrowUp();
                     return false;
                 case 'ArrowDown':
-                    arrow_down_down = true;
+                    enter_pressed = false;
                     onArrowDown();
                     return false;
                 case 'Home':
+                    enter_pressed = false;
                     onHome();
                     return false;
                 case 'End':
+                    enter_pressed = false;
                     onEnd();
                     return false;
                 case 'Delete':
+                    enter_pressed = false;
                     onDelete();
                     return false;
                 default:
@@ -330,25 +329,19 @@ function onKey(e) {
                 case 'v':
                     v_down = false;
                     break;
-                case 'ArrowLeft':
-                    arrow_left_down = false;
-                    return false;
-                case 'ArrowRight':
-                    arrow_right_down = false;
-                    return false;
-                case 'ArrowUp':
-                    arrow_up_down = false;
-                    return false;
-                case 'ArrowDown':
-                    arrow_down_down = false;
-                    return false;
                 default:
-                    break;
+                    return false;
             }
             action_done = false;
             break;
         default:
-            break;
+            return false;
+    }
+    if (enter_pressed && e.key !== 'Enter') {  // clear the command
+        enter_pressed = false;
+        cursorBack(command.length);
+        command = '';
+        cursor_pos = 0;
     }
     if (control_down && c_down && !action_done) {
         navigator.clipboard.writeText(term.getSelection());
@@ -400,7 +393,7 @@ function onData(d) {
                 onArrowLeft();
                 break;
             case '[C': // Right Arrow
-                onArrowRight()
+                onArrowRight();
                 break;
             case '[3~': // Delete
                 onDelete();
@@ -441,7 +434,7 @@ function relPos(x, y) {
     cursor_y = y;
 }
 
-function writeSelf(d, insert=false) {
+function writeSelf(d, insert = false) {
     if (interactive_mode) {
         self_write = true;
         term.write(d);
@@ -457,14 +450,12 @@ function cursorHome() {
     // move cursor to where it was when interactive_mode started
     if (cursor_x > 0) {
         writeSelf('\x9B' + cursor_x + 'D');
-    }
-    else if (cursor_x < 0) {
+    } else if (cursor_x < 0) {
         writeSelf('\x9B' + (cursor_x * -1) + 'C');
     }
     if (cursor_y > 0) {
         writeSelf('\x9B' + cursor_y + 'B');
-    }
-    else if (cursor_x < 0) {
+    } else if (cursor_x < 0) {
         writeSelf('\x9B' + (cursor_y * -1) + 'A');
     }
     cursor_x = 0;
@@ -492,10 +483,10 @@ ws.onmessage = function (e) {
             if (msg[2].type !== undefined) {
                 // display prompt for any command output, but not channels
                 command_sent = false;
-                term.write(msg[1][0] + reset + prompt);
+                term.write(msg[1][0] + reset + prompt + command);
             } else if (command_sent) {
                 command_sent = false;
-                term.write(msg[1][0] + reset + prompt);
+                term.write(msg[1][0] + reset + prompt + command);
             } else {
                 term.write(msg[1][0] + reset);
             }
@@ -533,8 +524,7 @@ ws.onmessage = function (e) {
             cursorHome();
             if (msg[1][0] > 0) {
                 writeSelf('\x9B' + msg[1][0] + 'A');
-            }
-            else if (msg[1][0] < 0) {
+            } else if (msg[1][0] < 0) {
                 writeSelf('\x9B' + (msg[1][0] * -1) + 'B');
             }
             cursor_y += msg[1][0];
