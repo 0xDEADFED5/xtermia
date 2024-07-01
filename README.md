@@ -9,6 +9,7 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Really fast, does terminal stuff
 - Up/down arrow to scroll through command history
 - Start typing to see completion suggestions, use right arrow or Tab to accept the suggestion
+- You can hold Enter to spam commands now or type anything else to overwrite last command
 - Ctrl+C to copy, Ctrl+V to paste in addition to the right-click copy/paste
 - Clickable web links
 - Completion suggestions based on Evennia commands available at login
@@ -17,6 +18,9 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Interactive terminal mode (see "commands/examples.py") for an example, or type 'interact' inside Evennia
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
+
+### Todo
+- If Evennia sends output while typing, move the prompt + command buffer ahead of it
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
