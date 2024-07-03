@@ -22,6 +22,7 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 ### Todo
 - Shift + arrow key selection
 - Map pane
+- Save log
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
