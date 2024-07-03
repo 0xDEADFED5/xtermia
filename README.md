@@ -19,6 +19,10 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 
+### Todo
+- Shift + arrow key selection
+- Map pane
+
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
 NOTE: 
