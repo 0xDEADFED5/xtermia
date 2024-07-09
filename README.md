@@ -32,21 +32,21 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
-NOTE: 
-- `/server/conf/settings.py` ***Will be overwritten***
-- `/server/conf/inputfuncs.py` ***Will be overwritten***
-- `/typeclasses/characters.py` ***Will be overwritten***
-- `/commands/default_cmdsets.py` ***Will be overwritten***
+
+Note: 
+- /server/conf/settings.py ***Will be overwritten***
+- /server/conf/inputfuncs.py ***Will be overwritten***
+- /typeclasses/characters.py ***Will be overwritten***
+- /commands/default_cmdsets.py ***Will be overwritten***
 
 ### Installation for an existing game
 Back up your existing game folder.
 Copy this repo's entire folder structure to your Evennia "mygame" game folder,
-except for the 4 files listed above.  If you haven't modified your inputfuncs.py, then
-overwrite it with this one, otherwise merge this one with yours.
+overwrite inputfuncs.py but don't overwrite the other 3 files listed above. 
 
-Add the settings from this settings.py to your existing settings.py.
+Add settings from [settings.py](/server/conf/settings.py) to your own settings.py.
 
-Look at characters.py for command completion and map example, add what you want to yours.
+Look at [characters.py](/typeclasses/characters.py) for command completion and map example, add what you want to yours.
 
 ### File sources
 - Uses "CACHE BUSTERRRR" from https://github.com/InspectorCaracal/evelite-client/tree/main
