@@ -6,7 +6,12 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 
 ### Features
 - No more input box, type directly into the terminal like it's 1984
-- Really fast, does terminal stuff
+- Does terminal stuff
+- Optional persistent map display
+    - send 'map' command to webclient with your map to update the cached map
+    - map will be centered in right half of terminal
+	- map can be enabled/disabled/updated at will
+    - (see [examples.py](commands/examples.py))
 - Up/down arrow to scroll through command history
 - Start typing to see completion suggestions, use right arrow or Tab to accept the suggestion
 - You can hold Enter to spam commands now or type anything else to overwrite last command
@@ -14,52 +19,34 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Clickable web links
 - Completion suggestions based on Evennia commands available at login
 - Tells Evennia the terminal width/height at startup and on resize
-- Sound/music (see "commands/examples.py")
-- Interactive terminal mode (see "commands/examples.py") for an example, or type 'interact' inside Evennia
+- Won't echo commands or add to command history until after login (won't echo password)
+- Sound/music (see [examples.py](commands/examples.py))
+- Interactive terminal mode (see [examples.py](commands/examples.py)) for an example, or type 'interact' in the game
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 
 ### Todo
 - Shift + arrow key selection
-- Map pane
-- Save log
+- Save history to file
+- Persist command history?
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
 NOTE: 
-- `/server/conf/settings.py` ***WILL BE OVERWRITTEN***
-- `/typeclasses/characters.py` ***WILL BE OVERWRITTEN***
+- `/server/conf/settings.py` ***Will be overwritten***
+- `/server/conf/inputfuncs.py` ***Will be overwritten***
+- `/typeclasses/characters.py` ***Will be overwritten***
+- `/commands/default_cmdsets.py` ***Will be overwritten***
 
 ### Installation for an existing game
 Back up your existing game folder.
 Copy this repo's entire folder structure to your Evennia "mygame" game folder,
-but ***MAKE SURE NOT TO OVERWRITE*** the two files listed above.
+except for the 4 files listed above.  If you haven't modified your inputfuncs.py, then
+overwrite it with this one, otherwise merge this one with yours.
 
-Add these lines to your mygame/server/conf/settings.py:
-```
-WEBSOCKET_PROTOCOL_CLASS = "server.portal.webclient.WebSocketClient"
-TEMPLATES[0]["OPTIONS"]["context_processors"].append("web.custom_context.extra_context")
-```
+Add the settings from this settings.py to your existing settings.py.
 
-Add this to your mygame/typeclasses/characters.py `Character` class:
-
-```
-def at_post_puppet(self, **kwargs):
-	"""
-	send command completion list to webclient at login and set a default prompt
-	"""
-	cmdset = self.cmdset
-	cmd_list = []
-	if cmdset.cmdset_stack:
-		cmds = cmdset.cmdset_stack[0].get_all_cmd_keys_and_aliases()
-		for c in cmds:
-			cmd_list.append(c)
-			if c.startswith('@'):
-				cmd_list.append(c[1:])
-	self.msg(player_commands=cmd_list)
-	self.msg(prompt='>')
-	super().at_post_puppet(**kwargs)
-```
+Look at characters.py for command completion and map example, add what you want to yours.
 
 ### File sources
 - Uses "CACHE BUSTERRRR" from https://github.com/InspectorCaracal/evelite-client/tree/main

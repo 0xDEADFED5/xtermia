@@ -1,14 +1,20 @@
-let ws_ready = false;
-let ws = new WebSocket(wsurl + '?' + csessid);
+const revision = 89
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
     disableStdin: false,
     fontFamily: '"Fira Code", Menlo, monospace',
     fontSize: 19,
-    cursorBlink: true
+    cursorBlink: true,
+    customGlyphs: false,
+    cursorStyle: 'block',
+    rescaleOverlappingGlyphs: false,
+    scrollback: 8192,
 });
+term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
 
+let ws_ready = false;
+let ws = new WebSocket(wsurl + '?' + csessid);
 const unicode11Addon = new Unicode11Addon.Unicode11Addon();
 term.loadAddon(unicode11Addon);
 term.unicode.activeVersion = '11';
@@ -21,15 +27,34 @@ webglAddon.onContextLoss(e => {
     webglAddon.dispose();
 });
 term.loadAddon(webglAddon);
-
 const weblinksAddon = new WebLinksAddon.WebLinksAddon();
 term.loadAddon(weblinksAddon);
-
 const el_terminal = document.getElementById('terminal');
 let audio = new Audio();
+
+let map_enabled = false;
+let map_column = 0;
+let map_max_width = 0;
+
+function calcMapSize(term_columns) {
+    map_column = Math.ceil(term_columns / 2) + 1;
+    map_max_width = term_columns - map_column;
+}
+
+function setMapSize(term_columns) {
+    calcMapSize(term_columns);
+    ws.send(JSON.stringify(['term_size', [term.cols - map_max_width - 1, term.rows], {}]));
+}
+
 term.onResize(e => {
     if (ws_ready) {
-        ws.send(JSON.stringify(['term_size', [e.cols, e.rows], {}]));
+        if (map_enabled) {
+            // reserve half the terminal width for map
+            setMapSize(e.cols);
+            ws.send(JSON.stringify(['map_size', [map_max_width, term.rows - 1], {}]));
+        } else {
+            ws.send(JSON.stringify(['term_size', [e.cols, e.rows], {}]));
+        }
     }
 });
 
@@ -48,6 +73,11 @@ let self_paste = false; // did we send the paste? or is the right-click menu bei
 let self_write = false; // if true, don't do onData events
 let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
 let enter_pressed = false;
+let censor_input = true; // until login, don't echo input commands so that password isn't leaked
+let map = '';
+let map_width = 0;
+let map_height = 0;
+const ansi_color_regex = /\x1B\[[0-9;]+m/g
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
@@ -56,13 +86,13 @@ let cursor_pos = 0;
 function doPaste() {
     navigator.clipboard.readText()
         .then(text => {
+            let update = '';
             const sub = command.substring(cursor_pos);
             command = command.substring(0, cursor_pos) + text + sub;
-            if (completion.length > 0) {
-                cursorBack(completion.length);
-                completion = '';
-            }
-            term.write(text + sub);
+            update += clearCompletion();
+            update += text;
+            update += sub;
+            term.write(update);
             cursor_pos += text.length;
         })
         .catch(err => {
@@ -84,18 +114,63 @@ function getCompletion(c) {
     return [false];
 }
 
-function cursorBack(len) {
-    if (len > 0) {
-        const back = '\x9B' + len + 'D';
-        const del = '\x9B' + len + 'P';
-        term.write(back + del);
+function countLines(input) {
+    /* calculate effective line count of text that has been rendered so that
+       multi-line completion hints/command buffers can be accurately erased.
+       gotcha #1: lines longer than terminal width will be wrapped in the terminal
+                  but the string doesn't contain \n
+       gotcha #2: control codes make the string longer but aren't rendered */
+    const width = map_enabled ? map_column - 1 : term.cols;
+    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split(/\r?\n/);
+    let lines = s.length;
+    for (let i = 0; i < s.length; i++) {
+        if (s[i].length > width) {
+            lines += Math.floor(s[i].length / width);
+        }
     }
+    return lines;
 }
 
-function del(len) {
-    if (len > 0) {
-        term.write('\x9B' + len + 'P');
+function clearCommand() {
+    // clear previous command, supports multi-line commands
+    let update = '';
+    if (command.length > 0) {
+        // const lines = (command.match(/\r?\n/g) || []).length;
+        const lines = countLines(command);
+        const width = map_enabled ? map_column - 1 : term.cols;
+        update += '\r';
+        update += ' '.repeat(width);
+        for (let i = 0; i < lines - 1; i++) {
+            update += '\x1B[A'; // up arrow
+            update += '\r';
+            update += ' '.repeat(width);
+        }
+        update += '\r';
+    } else if (prompt.length > 0) {
+        update += '\r';
+        update += ' '.repeat(prompt.length);
+        update += '\r';
     }
+    return update;
+}
+
+function clearCompletion() {
+    let update = '';
+    if (completion.length > 0) {
+        //const lines = (completion.match(/\r?\n/g) || []).length;
+        const lines = countLines(completion);
+        const width = map_enabled ? map_column - 1 : term.cols;
+        update += '\x1B7'; // save cursor
+        update += ' '.repeat(width - cursor_pos);
+        for (let i = 0; i < lines - 1; i++) {
+            update += '\r';
+            update += '\x1B[B'; // down arrow
+            update += ' '.repeat(width);
+        }
+        update += '\x1B8'; // restore cursor
+        completion = '';
+    }
+    return update;
 }
 
 function onDefault(e) {
@@ -103,35 +178,53 @@ function onDefault(e) {
     cursor_pos += 1;
     index = history.length - 1;
     last_dir = 0;
-    // insert characters after left arrow has been pressed
+    let update = '';
+    // insert characters if cursor has been moved
     if (cursor_pos !== command.length) {
         const sub = command.substring(cursor_pos);
         // overwrite command from new position and move the cursor back
-        term.write(e + sub + '\x9B' + sub.length + 'D');
+        update += e;
+        update += sub;
+        update += '\x9B';
+        update += sub.length;
+        update += 'D';
+        term.write(update);
         return;
     }
     const result = getCompletion(command);
+    update += clearCompletion();
     if (result[0]) {
-        if (completion.length > 0) {
-            del(completion.length);
-        }
-        const str = result[1].substring(command.length);
-        completion = str;
+        const sub = result[1].substring(command.length);
+        completion = sub;
+        update += '\x1B7'; // save cursor
         // write new typed char + grey completion, reset color, move the cursor back
-        term.write(e + grey + str + reset + '\x9B' + str.length + 'D');
+        update += e;
+        update += grey;
+        update += sub;
+        update += reset;
+        update += '\x1B8'; // restore cursor
+        update += '\x9B';
+        update += e.length;
+        update += 'C'; // right arrow
     } else {
-        if (completion.length > 0) {
-            del(completion.length);
-        }
         completion = '';
-        term.write(e);
+        update += e;
     }
+    term.write(update);
 }
 
 function onEnter() {
     if (command !== '') {
-        command_sent = true;
-        ws.send(JSON.stringify(['text', [command], {}]));
+        let update = '';
+        if (censor_input) {
+            ws.send(JSON.stringify(['text', [command], {}]));
+            update += clearCommand();
+            cursor_pos = 0;
+            command = '';
+            update += '\r\n';
+            term.write(update);
+            return;
+        }
         if (history.length > max_len) {
             history.shift();
         }
@@ -142,18 +235,20 @@ function onEnter() {
             history.splice(found_index, 1);
             index = history.push(command) - 1;
         }
-        if (completion.length > 0) {
-            del(completion.length);
-            completion = '';
-        }
-        if (prompt.length > 0) {
-            cursorBack(prompt.length);
-        }
-        cursorBack(command.length);
-        term.write(command_color + command + reset + '\r\n');
-        last_dir = 0;
+        update += clearCommand();
+        // add correct number of newlines
+        const width = map_enabled ? map_column - 1 : term.cols;
+        const lines = Math.ceil(command.length / width);
+        update += command_color;
+        update += command;
+        update += reset;
+        update += '\r\n'.repeat(lines);
+        term.write(update);
+        last_dir = 1;
         enter_pressed = true;
         cursor_pos = command.length;
+        command_sent = true;
+        ws.send(JSON.stringify(['text', [command], {}]));
     }
 }
 
@@ -172,23 +267,26 @@ function onDelete() {
 }
 
 function onBackspace() {
-    if (completion.length > 0) {
-        del(completion.length);
-        completion = '';
-    }
+    let update = '';
+    update += clearCompletion();
     if (command.length !== 0 && cursor_pos > 0) {
         // backspace can be in the middle of a line
         const sub = command.substring(cursor_pos);
         command = command.substring(0, cursor_pos - 1) + sub;
         cursor_pos -= 1;
         // move cursor back, write shortened command + ' ', move cursor back
-        term.write('\x9B1D' + sub + ' ' + '\x9B' + (sub.length + 1) + 'D');
+        update += '\x9B1D';
+        update += sub;
+        update += ' ';
+        update += '\x9B';
+        update += (sub.length + 1);
+        update += 'D';
+        term.write(update);
     }
 }
 
 function onArrowRight() {
     if (completion.length > 0) {
-        del(completion.length);
         term.write(completion);
         command = command.concat(completion);
         cursor_pos += completion.length;
@@ -202,31 +300,39 @@ function onArrowRight() {
 function onArrowUp() {
     if (index === -1) {
         return;
+        // } else if (last_dir !== 0 && index > 0) {
     } else if (last_dir !== 0 && index > 0) {
         index -= 1;
     }
-    if (completion.length > 0) {
-        del(completion.length);
-    }
-    cursorBack(cursor_pos);
-    command = '';
+    let update = '';
+    update += clearCompletion();
+    update += clearCommand();
+    update += prompt;
     command = history[index];
-    term.write(command);
+    update += command;
+    term.write(update);
     cursor_pos = command.length;
     last_dir = 2;
 }
 
 function onArrowDown() {
     if (index < history.length - 1) {
+        let update = '';
         index += 1;
-        cursorBack(cursor_pos);
-        completion = '';
+        update += clearCompletion();
+        update += clearCommand();
+        update += prompt;
         command = history[index];
-        term.write(command);
+        update += command;
+        term.write(update);
         cursor_pos = command.length;
         last_dir = 1;
     } else if (cursor_pos !== 0) { // we're at the bottom of history, clear it
-        cursorBack(cursor_pos);
+        let update = '';
+        update += clearCompletion();
+        update += clearCommand();
+        update += prompt;
+        term.write(update);
         command = '';
         completion = '';
         cursor_pos = 0;
@@ -236,12 +342,11 @@ function onArrowDown() {
 
 function onArrowLeft() {
     if (cursor_pos > prompt.length - 1) {
-        if (completion.length > 0) {
-            del(completion.length);
-            completion = '';
-        }
+        let update = '';
+        update += clearCompletion();
+        update += '\x9B1D';
         cursor_pos -= 1;
-        term.write('\x9B1D');
+        term.write(update);
     }
 }
 
@@ -339,7 +444,10 @@ function onKey(e) {
     }
     if (enter_pressed && e.key !== 'Enter') {  // clear the command
         enter_pressed = false;
-        cursorBack(command.length);
+        let update = '';
+        update += clearCommand();
+        update += prompt;
+        term.write(update);
         command = '';
         cursor_pos = 0;
     }
@@ -369,13 +477,13 @@ function onData(d) {
     if (d.length !== 1 && ord !== 0x1b) {  // hacky paste detection for right-click paste, avoid control codes
         // paste!
         if (!self_paste) {
+            d = d.replace(/\r\n?/g, '\r\n');
+            let update = clearCompletion();
             const sub = command.substring(cursor_pos);
             command = command.substring(0, cursor_pos) + d + sub;
-            if (completion.length > 0) {
-                cursorBack(completion.length);
-                completion = '';
-            }
-            term.write(d + sub);
+            update += d;
+            update += sub;
+            term.write(update);
             cursor_pos += d.length;
         }
         self_paste = false;
@@ -434,16 +542,25 @@ function relPos(x, y) {
     cursor_y = y;
 }
 
-function writeSelf(d, insert = false) {
+function writeSelf(d, insert = false, overwrite = false) {
     if (interactive_mode) {
         self_write = true;
-        term.write(d);
-        if (insert) {
-            term.write('\x9B' + d.length + 'D'); // cursor back N
-        }
-    } else {
-        term.write(d);
     }
+    let update = '';
+    if (overwrite) {
+        update += '\x9B';
+        update += d.length;
+        update += 'P';  // delete
+    }
+    if (insert) {
+        update += d;
+        update += '\x9B';
+        update += d.length;
+        update += 'D'; // cursor back N
+    } else {
+        update += d;
+    }
+    term.write(update);
 }
 
 function cursorHome() {
@@ -460,6 +577,84 @@ function cursorHome() {
     }
     cursor_x = 0;
     cursor_y = 0;
+}
+
+function clearMap() {
+    let update = '';
+    update += '\x1B7';  // save cursor
+    for (let i = 0; i < term.rows; i++) {
+        // move cursor, clear to end
+        update += '\x9B';
+        update += (i + 1);
+        update += ';';
+        update += (map_column + 1);
+        update += 'H\x1B[0K';
+    }
+    update += '\x1B8';  // restore cursor
+    return update;
+}
+
+function writeMap() {
+    let update = '';
+    let y = 2; // for centering vertically
+    update += '\x1B7';  // save cursor
+    let pre_pad = '';  // for centering horizontally
+    let pad_height = Math.floor((term.rows - 2 - map_height) / 2);
+    if (pad_height > 0) {
+        y += pad_height;
+    }
+    const pre_pad_len = Math.floor((term.cols - map_column - map_width) / 2);
+    if (pre_pad_len > 0) {
+        pre_pad = ' '.repeat(pre_pad_len)
+    }
+    for (let i = 0; i < map.length; i++) {
+        update += '\x9B';
+        update += (i + y);
+        update += ';';
+        update += (map_column + 1);
+        update += 'H';
+        update += pre_pad;
+        update += map[i];
+    }
+    update += '\x1B8';  // restore cursor
+    return update;
+}
+
+function wrap(input) {
+    // wrap input to width, ignoring control codes
+    const width = map_enabled ? term.cols - map_max_width - 1 : term.cols;
+    let output = '';
+    let len = 0;
+    let is_ansi = false;
+    for (let i = 0; i < input.length; i++) {
+        if (is_ansi) {
+            if (input[i] === 'm' || input[i] === 'K') {
+                output += input[i];
+                is_ansi = false;
+            } else {
+                output += input[i];
+            }
+        } else {
+            if (input[i] === '\x1b') {
+                output += '\x1b';
+                is_ansi = true;
+            } else {
+                if (input[i] === '\r' || input[i] === '\n') {
+                    output += input[i];
+                    len = 0;
+                } else {
+                    if (len === width) {
+                        output += '\n';
+                        len = 0;
+                    }
+                    output += input[i];
+                    len += 1;
+                }
+            }
+        }
+
+    }
+    return output;
 }
 
 term.onData(e => onData(e));
@@ -480,20 +675,35 @@ ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            // move the prompt, command buffer, and completion text after whatever we just received
+            let update = '';
+            if (map_enabled) {
+                update += clearMap();
+            }
+            update += clearCompletion();
+            update += clearCommand();
+            if (map_enabled) {
+                update += wrap(msg[1][0]);
+                update += reset;
+                update += prompt;
+                update += command;
+            } else {
+                update += msg[1][0];
+                update += reset;
+                update += prompt;
+                update += command;
+            }
             if (completion.length > 0) {
-                del(completion.length);
+                update += grey;
+                update += completion;
+                update += reset;
+                update += '\x9B';
+                update += completion.length;
+                update += 'D';
             }
-            if (prompt.length > 0) {
-                cursorBack(prompt.length);
+            if (map_enabled) {
+                update += writeMap();
             }
-            if (command.length > 0) {
-                cursorBack(command.length);
-            }
-            term.write(msg[1][0] + reset + prompt + command);
-            if (completion.length > 0) {
-                term.write(grey + completion + reset + '\x9B' + completion.length + 'D');
-            }
+            term.write(update);
             break;
         case 'raw_text':  // default text messages get /r/n appended to them before being sent, this doesn't
             writeSelf(msg[1][0]);
@@ -525,6 +735,7 @@ ws.onmessage = function (e) {
               moves cursor to line relative from where interactive_start was sent and clears it.
               cursor is then moved back to where it was.
               positive values go up, negative go down, and 0 clears the current line */
+            // TODO: coalesce these writes and make it map-aware
             cursorHome();
             if (msg[1][0] > 0) {
                 writeSelf('\x9B' + msg[1][0] + 'A');
@@ -547,6 +758,7 @@ ws.onmessage = function (e) {
                positive numbers go up (row), or right (column)
                negative numbers go down (row), or left (column)
                i.e. position[0,1,'msg', 4] goes straight up one line, prints 'msg ' at start of row, and returns the cursor */
+            // TODO: coalesce these writes
             const old_x = cursor_x;
             const old_y = cursor_y;
             cursorHome();
@@ -568,19 +780,63 @@ ws.onmessage = function (e) {
             audio.pause();
             break;
         case 'logged_in':
+            censor_input = false;
             break;
         case 'interactive_start':
             interactive_mode = true;
             cursor_x = 0;
             cursor_y = 0;
-            term.write('\x9Bs'); // save cursor
+            term.write('\x1B7'); // save cursor
             break;
         case 'interactive_end':
             interactive_mode = false;
-            term.write('\x9Bu'); // restore cursor
+            term.write('\x1B8'); // restore cursor
             break;
         case 'player_commands':
             player_commands = msg[1];
+            break;
+        case 'map_enable':
+            map_enabled = true;
+            // reserve half the terminal width for map
+            setMapSize(term.cols)
+            break;
+        case 'map_disable':
+            map_enabled = false;
+            ws.send(JSON.stringify(['term_size', [term.cols, term.rows], {}]));
+            break;
+        case 'get_map_size':
+            // return the maximum map dimensions for current terminal size
+            // this cannot be used to check if map is enabled
+            // because this specifically supports getting what the map size *will*
+            // be, in case map size is before map is enabled
+            calcMapSize(term.cols);
+            ws.send(JSON.stringify(['map_size', [map_max_width, term.rows - 1], {}]));
+            break;
+        case 'map':
+            map = msg[1].split(/\r?\n/);
+            // strip ANSI before checking width
+            const stripped = msg[1].replace(ansi_color_regex, '').split(/\r?\n/);
+            // figure out map width so it can be centered
+            map_width = 0;
+            map_height = map.length;
+            for (let i = 0; i < stripped.length; i++) {
+                if (stripped[i].length > map_width) {
+                    map_width = stripped[i].length;
+                }
+            }
+            if (map_enabled) {
+                let update = '';
+                update += clearMap();
+                update += clearCompletion();
+                update += clearCommand();
+                update += writeMap();
+                // move cursor down to bottom of screen
+                const lines = term.rows - term.buffer.active.cursorY - 1
+                if (lines > 0) {
+                    update += '\r\n'.repeat(lines);
+                }
+                term.write(update);
+            }
             break;
         default:
             console.log('Unknown command: ' + msg);
@@ -597,17 +853,12 @@ window.addEventListener('focus', (e) => {
 window.addEventListener('keydown', (e) => {
     term.focus();
 });
-// window.addEventListener('scroll', function (e) {
-//     window.scrollTo(0, 0);
-//     fitAddon.fit();
-//     e.preventDefault();
-//     e.stopPropagation();
-// });
-//
-// window.addEventListener('touchmove', function (e) {
-//     e.preventDefault();
-//     e.stopPropagation();
-// });
 window.addEventListener('resize', function (e) {
+    // clear map before resize
+    if (map_enabled) {
+        let update = '';
+        update += clearMap();
+        term.write(update);
+    }
     fitAddon.fit();
 });

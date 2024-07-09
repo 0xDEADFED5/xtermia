@@ -1,9 +1,9 @@
 from commands.command import Command
-from world.callbacks import add_interact_callback, remove_interact_callback
-
+from evennia.utils.ansi import ANSIString, ANSIParser
+import colorsys
 
 TEMPLATE = """
-Use arrow keys to move, ESC to exit, or SPACE to mark cell
+{instructions}
         
  ┌─────────┐
 3│         │
@@ -13,8 +13,9 @@ Use arrow keys to move, ESC to exit, or SPACE to mark cell
  └─────────┘
   012345678
 
-{label}
+  {label}
 """
+INST = 'Use arrow keys to move, ESC to exit, or SPACE to mark cell'
 LABEL = "Status: cursor at ({x},{y})"
 EXIT_LABEL = "Status: exiting ..."
 BOX_WIDTH = 9
@@ -35,11 +36,13 @@ class CmdInteract(Command):
     key = "interact"
     help_category = "Examples"
 
-    def i_callback(self, caller, msg):
+    def i_callback(self, *user, **callback):
+        data = callback['data']
+        caller = user[0]
         cursor_x = caller.ndb.cursor_x
         cursor_y = caller.ndb.cursor_y
         marked = caller.ndb.marked
-        match msg:
+        match data:
             case '\u001b[A':  # up arrow
                 if cursor_y < BOX_HEIGHT - 1:  # keep the cursor inside box
                     caller.msg(cursor_up='')  # move cursor up on the webclient
@@ -73,7 +76,7 @@ class CmdInteract(Command):
                 caller.msg(clear_line=1)  # go up a line and clear it
                 caller.msg(pos_text=(0, 1, EXIT_LABEL))
                 caller.msg(interactive_end='')  # tell the webclient to go back to normal
-                remove_interact_callback(caller, self.i_callback)  # remove callback
+                caller.remove_callback('interact')  # remove callback
                 coord_str = ''  # build up a simple string of our results
                 for k, v in marked.items():
                     if v:
@@ -111,9 +114,9 @@ class CmdInteract(Command):
     def func(self):
             caller = self.caller
             label = LABEL.format(x=0,y=0)
-            template = TEMPLATE.format(label=label)
+            template = TEMPLATE.format(label=label, instructions=INST)
             caller.msg(raw_text=template)  # raw_text sends the string as-is, default text will append '\r\n'
-            add_interact_callback(caller, self.i_callback)  # this callback gets called for every keypress after interactive_start
+            caller.add_callback('interact', self.i_callback, caller)  # this callback gets called for every keypress after interactive_start
             caller.msg(interactive_start='')  # put the webclient into interactive mode
             caller.msg(pos_text=(0,1,label))  # see the explanation of pos_text above
             # place initial cursor position right 2 places and up 5 places from the bottom left of template
@@ -142,6 +145,7 @@ class CmdUpdateCompletions(Command):
                 if c.startswith('@'):
                     cmd_list.append(c[1:])
         caller.msg(player_commands=cmd_list)
+        caller.msg(text=(f"Completion hints updated: {str(cmd_list)}", {'type': 'completions'}))
 
 class CmdTestAudio(Command):
     """
@@ -173,8 +177,188 @@ class CmdClearscreen(Command):
     clears the screen
     """
     key = 'cls'
-    help_category = 'General'
+    help_category = 'Examples'
 
     def func(self):
         caller = self.caller
-        caller.msg(text=('\033[2J', {'type': 'clearscreen'}))
+        caller.msg(text=('\x1b[2J', {'type': 'clearscreen'}))
+
+    
+class CmdMapOn(Command):
+    """
+    enables the map in webclient
+    for now the map takes up right half of terminal and isn't adjustable
+    when map is enabled, the webclient reports a new terminal width to Evennia (current width/2)
+    """
+    key = 'mapon'
+    help_category = 'Examples'
+
+    def func(self):
+        caller = self.caller
+        caller.db.map_enabled = True
+        caller.msg(map_enable='')
+        caller.msg(text=('Map pane enabled on webclient.', {'type': 'map_enable'}))
+        
+
+class CmdMapOff(Command):
+    """
+    disables the map in webclient
+    """
+    key = 'mapoff'
+    help_category = 'Examples'
+
+    def func(self):
+        caller = self.caller
+        caller.db.map_enabled = False
+        caller.msg(map_disable='')
+        caller.msg(text=('Map pane disabled on webclient.', {'type': 'map_disable'}))
+
+
+class CmdMapTest(Command):
+    """ generate test patterns for map pane and text pane.
+        map is cached in webclient and is redrawn every time text is sent from Evennia.
+        whenever the map changes send a 'map' command to the webclient with the new map.
+        the map will redrawn in the webclient when it's updated.
+        how maps currently work:
+            maps are centered horizontally and vertically within the right half of the terminal
+            maps at maximum height will always start drawing 1 row below the top terminal row
+            this is so the webclient doesn't have to scroll up to remove previous map frame (which results in better experience)
+            maps taller than the terminal will be chopped off at the bottom
+            the alternative would be adding blank lines to Evennia's text output in the left pane in order to add room for taller maps,
+            but I think that sounds kind of terrible so I haven't implemented it """
+    key = 'maptest'
+    help_category = 'Examples'
+    
+    @staticmethod
+    def colorize(hue: float, bright: float, input: str, ansi=False):
+        """ create colorized ANSIString from HSV hue
+        Args:
+            hue (float): HSV hue where green = 120.0
+            bright (float): 1.0 = 100% brightness
+            input (str): string to colorize
+            ansi (bool): if True return raw 24-bit ANSI string, otherwise return ANSIString"""
+        if hue != 0.0:
+            hue /= 360.0
+        sat = 1.0
+        r, g, b = tuple(round(i * 255) for i in colorsys.hsv_to_rgb(hue, sat, bright))
+        if not ansi:
+            return f"|#{r:02x}{g:02x}{b:02x}{input}"  # Evennia-style 24-bit color tag
+        return f"\x1b[38;2;{r};{g};{b}m{input}"  # raw ANSI color
+    
+    @staticmethod
+    def make_line(width: int, hue=0.0) -> str:
+        line = ''
+        a = 65
+        for _ in range(width):
+            char = CmdMapTest.colorize(hue, 1.0, chr(a))
+            line = f"{line}|n{char}|n"
+            a += 1
+            if a == 91:
+                a = 65
+            hue += 1.0
+            if hue > 360.0:
+                    hue = 0.0
+        return line
+    
+    @staticmethod
+    def make_pattern(width: int, height: int, intro=True, hue=0.0, ansi=False) -> str:
+        """ make a colorful little test pattern for map testing.
+            color is used for testing 2 things:
+            to make sure webclient centers ANSI colored maps properly,
+            and to make sure text pane properly line wraps ANSI strings"""
+        num = 0
+        pattern = ''
+        line = ''
+        a = 64
+        bright = 1.0
+        if intro:
+            height -= 1
+        for _ in range(height):
+            line = ''
+            num = -1
+            for _ in range(width - 1):
+                num += 1
+                if num == 10:
+                    num = 0
+                if bright < 0.2:
+                    bright = 1.0
+                    hue += 1.0
+                if hue > 360.0:
+                    hue = 0.0
+                line = f"{line}{CmdMapTest.colorize(hue, bright, str(num), ansi)}"
+                bright -= 0.05
+            a += 1
+            if a == 91:
+                a = 65
+            line = f"|n|u{chr(a)}|n{line}\r\n"
+            pattern = f"{pattern}{line}"
+        if intro:
+            return f"({width}X{height + 1}) Lines end: {str(num)} last line start: |u{chr(a)}|n\r\n{pattern}"
+        return pattern
+    
+    def callback(self, *user, **system):
+        caller = user[0]
+        caller.remove_callback('map_size')  # only fire once
+        data = system['data']
+        """ get max width of map for test pattern.
+            because map pane is same size as text pane, we can base the max map size 
+            on the current terminal size reported to Evennia """
+        max_width = data[0]
+        max_height = data[1]
+        map_pattern = CmdMapTest.make_pattern(max_width, max_height, True, 0.0, False)
+        caller.msg(map=map_pattern)  # set map to test pattern above
+        sessions = caller.sessions.get()
+        flags = sessions[0].protocol_flags
+        width = flags.get('SCREENWIDTH')[0]
+        caller.msg(f"Sending color line of width: ({width}x4)...")
+        width *= 4
+        text_pattern = CmdMapTest.make_line(width, 240.0)
+        caller.msg(text_pattern)
+
+        
+    def func(self):
+        caller = self.caller
+        caller.db.map_enabled = True  # persist map setting
+        caller.msg('Enabling map on character and sending test patterns...')
+        caller.add_callback('map_size', self.callback, caller) # this is called in response to the 'get_map_size' command below
+        caller.msg(map_enable='')  # enable map, webclient will report new terminal size as half the current width
+        caller.msg(get_map_size='') # get what the map size would be for current terminal size
+
+
+class CmdResizeCallbackTest(Command):
+    """
+    test adding/removing 2 term_size callbacks by running this command and resizing webclient window 
+    see server/conf/inputfuncs.py for other available callbacks
+    """
+    key = 'resizetest'
+    help_category = 'Examples'
+    callback_fired = False
+    
+    def callback1(self, *user, **system):
+        """
+        callback signature requires *arg, **kwargs (this could also be a static method without the self param)
+        *user = args provided at add_callback
+        **system = data provided by inputfuncs.py when the callback is fired
+        """
+        caller = user[0]
+        data = system['data']
+        caller.msg(f"Terminal resize callback 1: {str(data)}")
+        if self.callback_fired:  # remove callbacks after both have fired
+            caller.remove_callback('term_size')
+            caller.msg(text=('term_size callbacks removed.', {'type': 'resizetest'}))
+        self.callback_fired = True
+    def callback2(self, *user, **system):
+        caller = user[0]
+        data = system['data']
+        caller.msg(f"Terminal resize callback 2: {str(data)}")
+        if self.callback_fired:  # remove callbacks after both have fired, this one will probably finish last
+            caller.remove_callback('term_size')
+            caller.msg(text=('term_size callbacks removed.', {'type': 'resizetest'}))
+        self.callback_fired = True
+        
+    def func(self):
+        caller = self.caller
+        caller.add_callback('term_size', self.callback1, caller)
+        caller.add_callback('term_size', self.callback2, caller)
+        caller.msg(text=('2 term_size callbacks added, resize the webclient window to test them!', {'type': 'resizetest'}))
+        

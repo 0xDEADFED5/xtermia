@@ -284,19 +284,17 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
         flags = self.protocol_flags
 
         options = kwargs.pop("options", {})
-        raw = options.get("raw", flags.get("RAW", False))
-        client_raw = options.get("client_raw", False)
         nocolor = options.get("nocolor", flags.get("NOCOLOR", False))
         screenreader = options.get("screenreader", flags.get("SCREENREADER", False))
         prompt = options.get("send_prompt", False)
 
-        if screenreader:
+        if screenreader or nocolor:
             # screenreader mode cleans up output
             text = parse_ansi(text, strip_ansi=True, xterm256=False, mxp=False)
             text = _RE_SCREENREADER_REGEX.sub("", text)
             args[0] = text
         else:
-            args[0] = parse_ansi(text, strip_ansi=False, xterm256=True, mxp=False)
+            args[0] = parse_ansi(text, strip_ansi=False, xterm256=True, mxp=False, truecolor=True)
         if not prompt: 
             args[0] += '\r\n'
         cmd = "prompt" if prompt else "text"
@@ -321,5 +319,12 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
                 client instead.
 
         """
-        if not cmdname == "options":
-            self.sendLine(json.dumps([cmdname, args, kwargs]))
+        match cmdname:
+            case 'map':
+                text = parse_ansi(args[0], strip_ansi=False, xterm256=True, mxp=False, truecolor=True)
+                self.sendLine(json.dumps([cmdname, text, kwargs]))
+            case 'options':
+                pass
+            case _:
+                self.sendLine(json.dumps([cmdname, args, kwargs]))
+                

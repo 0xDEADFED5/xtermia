@@ -1,4 +1,4 @@
-from .examples import CmdInteract, CmdClearscreen, CmdPauseAudio, CmdTestAudio, CmdUpdateCompletions
+from .examples import CmdInteract, CmdClearscreen, CmdPauseAudio, CmdTestAudio, CmdUpdateCompletions, CmdMapOff, CmdMapOn, CmdMapTest, CmdResizeCallbackTest
 import evennia
 
 
@@ -9,3 +9,7 @@ class ExampleCmdSet(evennia.CmdSet):
         self.add(CmdTestAudio)
         self.add(CmdUpdateCompletions)
         self.add(CmdClearscreen)
+        self.add(CmdMapOff)
+        self.add(CmdMapOn)
+        self.add(CmdMapTest)
+        self.add(CmdResizeCallbackTest)
