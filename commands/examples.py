@@ -231,7 +231,7 @@ class CmdMapTest(Command):
     
     @staticmethod
     def colorize(hue: float, bright: float, input: str, ansi=False):
-        """ create colorized ANSIString from HSV hue
+        """ wrap input string with ANSI color or Evennia color tag from HSV hue
         Args:
             hue (float): HSV hue where green = 120.0
             bright (float): 1.0 = 100% brightness
@@ -297,7 +297,7 @@ class CmdMapTest(Command):
         return pattern
     
     def callback(self, *user, **system):
-        caller = user[0]
+        caller = user[0]  # *user is the list of arguments of sent below from add_callback
         caller.remove_callback('map_size')  # only fire once
         data = system['data']
         """ get max width of map for test pattern.
@@ -336,7 +336,7 @@ class CmdResizeCallbackTest(Command):
     
     def callback1(self, *user, **system):
         """
-        callback signature requires *arg, **kwargs (this could also be a static method without the self param)
+        callback signature requires *arg, **kwargs
         *user = args provided at add_callback
         **system = data provided by inputfuncs.py when the callback is fired
         """
@@ -344,9 +344,10 @@ class CmdResizeCallbackTest(Command):
         data = system['data']
         caller.msg(f"Terminal resize callback 1: {str(data)}")
         if self.callback_fired:  # remove callbacks after both have fired
-            caller.remove_callback('term_size')
+            caller.remove_callback('term_size')  # for now all 'term_size' callbacks are removed at once
             caller.msg(text=('term_size callbacks removed.', {'type': 'resizetest'}))
         self.callback_fired = True
+        
     def callback2(self, *user, **system):
         caller = user[0]
         data = system['data']
