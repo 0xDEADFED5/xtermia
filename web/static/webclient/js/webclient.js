@@ -1,4 +1,4 @@
-const revision = 93;
+const revision = 94;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -121,7 +121,7 @@ function countLines(input) {
                   but the string doesn't contain \n
        gotcha #2: control codes make the string longer but aren't rendered */
     const width = map_enabled ? map_column - 1 : term.cols;
-    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split(/\n/);
+    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split('\n');
     let lines = s.length;
     for (let i = 0; i < s.length; i++) {
         if (s[i].length > width) {
