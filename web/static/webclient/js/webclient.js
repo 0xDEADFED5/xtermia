@@ -1,4 +1,4 @@
-const revision = 89
+const revision = 93;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -11,7 +11,7 @@ const term = new Terminal({
     rescaleOverlappingGlyphs: false,
     scrollback: 8192,
 });
-term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
+term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (based on xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
 
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
@@ -121,7 +121,7 @@ function countLines(input) {
                   but the string doesn't contain \n
        gotcha #2: control codes make the string longer but aren't rendered */
     const width = map_enabled ? map_column - 1 : term.cols;
-    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split(/\r?\n/);
+    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split(/\n/);
     let lines = s.length;
     for (let i = 0; i < s.length; i++) {
         if (s[i].length > width) {
@@ -808,7 +808,7 @@ ws.onmessage = function (e) {
             // return the maximum map dimensions for current terminal size
             // this cannot be used to check if map is enabled
             // because this specifically supports getting what the map size *will*
-            // be, in case map size is before map is enabled
+            // be, in case map size is requested before map is enabled
             calcMapSize(term.cols);
             ws.send(JSON.stringify(['map_size', [map_max_width, term.rows - 1], {}]));
             break;
