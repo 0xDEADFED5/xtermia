@@ -41,7 +41,7 @@ Note:
 
 ### Installation for an existing game
 Back up your existing game folder.
-Copy this repo's entire folder structure to your Evennia "mygame" game folder,
+Copy this repo's entire folder structure to your Evennia "mygame" game folder and 
 overwrite inputfuncs.py but don't overwrite the other 3 files listed above. 
 
 Add settings from [settings.py](/server/conf/settings.py) to your own settings.py.
