@@ -1,4 +1,4 @@
-const revision = 94;
+const revision = 95;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -121,7 +121,7 @@ function countLines(input) {
                   but the string doesn't contain \n
        gotcha #2: control codes make the string longer but aren't rendered */
     const width = map_enabled ? map_column - 1 : term.cols;
-    const s = input.replace(/\x1B\[[0-9;]+m/g, '').split('\n');
+    const s = input.replace(ansi_color_regex, '').split(/\r?\n/);
     let lines = s.length;
     for (let i = 0; i < s.length; i++) {
         if (s[i].length > width) {
@@ -135,7 +135,6 @@ function clearCommand() {
     // clear previous command, supports multi-line commands
     let update = '';
     if (command.length > 0) {
-        // const lines = (command.match(/\r?\n/g) || []).length;
         const lines = countLines(command);
         const width = map_enabled ? map_column - 1 : term.cols;
         update += '\r';
@@ -157,7 +156,6 @@ function clearCommand() {
 function clearCompletion() {
     let update = '';
     if (completion.length > 0) {
-        //const lines = (completion.match(/\r?\n/g) || []).length;
         const lines = countLines(completion);
         const width = map_enabled ? map_column - 1 : term.cols;
         update += '\x1B7'; // save cursor
