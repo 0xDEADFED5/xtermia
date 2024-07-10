@@ -1,4 +1,4 @@
-const revision = 95;
+const revision = 97;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -47,6 +47,7 @@ function setMapSize(term_columns) {
 }
 
 term.onResize(e => {
+    fitAddon.fit();
     if (ws_ready) {
         if (map_enabled) {
             // reserve half the terminal width for map
@@ -115,6 +116,8 @@ function getCompletion(c) {
 }
 
 function countLines(input) {
+    // TODO: think about actually tracking cursor row position and prompt position instead of this
+    // this is a temporary workaround because I didn't consider multi-line input from the start
     /* calculate effective line count of text that has been rendered so that
        multi-line completion hints/command buffers can be accurately erased.
        gotcha #1: lines longer than terminal width will be wrapped in the terminal
@@ -656,7 +659,6 @@ function wrap(input) {
 }
 
 term.onData(e => onData(e));
-// term.onKey(e => onKey(e));
 term.attachCustomKeyEventHandler(e => onKey(e));
 term.open(el_terminal);
 fitAddon.fit();
@@ -829,7 +831,7 @@ ws.onmessage = function (e) {
                 update += clearCommand();
                 update += writeMap();
                 // move cursor down to bottom of screen
-                const lines = term.rows - term.buffer.active.cursorY - 1
+                const lines = term.rows - term.buffer.active.cursorY - 1;
                 if (lines > 0) {
                     update += '\r\n'.repeat(lines);
                 }
@@ -854,9 +856,11 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('resize', function (e) {
     // clear map before resize
     if (map_enabled) {
-        let update = '';
-        update += clearMap();
-        term.write(update);
+        term.write(clearMap(), () => {
+            fitAddon.fit();
+            term.write(writeMap());
+        });
+    } else {
+        fitAddon.fit();
     }
-    fitAddon.fit();
-});
+}, true);
