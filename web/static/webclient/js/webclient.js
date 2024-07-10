@@ -1,4 +1,4 @@
-const revision = 97;
+const revision = 98;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -184,11 +184,7 @@ function onDefault(e) {
     if (cursor_pos !== command.length) {
         const sub = command.substring(cursor_pos);
         // overwrite command from new position and move the cursor back
-        update += e;
-        update += sub;
-        update += '\x9B';
-        update += sub.length;
-        update += 'D';
+        update += e + sub + '\x9B' + sub.length + 'D';
         term.write(update);
         return;
     }
@@ -198,7 +194,7 @@ function onDefault(e) {
         const sub = result[1].substring(command.length);
         completion = sub;
         update += '\x1B7'; // save cursor
-        // write new typed char + grey completion, reset color, move the cursor back
+        // write new typed char + grey completion, reset color
         update += e;
         update += grey;
         update += sub;
@@ -301,7 +297,6 @@ function onArrowRight() {
 function onArrowUp() {
     if (index === -1) {
         return;
-        // } else if (last_dir !== 0 && index > 0) {
     } else if (last_dir !== 0 && index > 0) {
         index -= 1;
     }
@@ -529,55 +524,45 @@ function onData(d) {
 function relPos(x, y) {
     x = x - cursor_x;
     y = y - cursor_y;
+    let update = '';
     if (y > 0) {
-        writeSelf('\x9B' + y + 'A'); // cursor up N
+        update += '\x9B' + y + 'A'; // cursor up N
     } else if (y < 0) {
-        writeSelf('\x9B' + (y * -1) + 'B'); // cursor down N
+        update +='\x9B' + (y * -1) + 'B'; // cursor down N
     }
     if (x > 0) {
-        writeSelf('\x9B' + x + 'C'); // cursor forward N
+        update +='\x9B' + x + 'C'; // cursor forward N
     } else if (x < 0) {
-        writeSelf('\x9B' + (x * -1) + 'D'); // cursor back N
+        update += '\x9B' + (x * -1) + 'D'; // cursor back N
     }
     cursor_x = x;
     cursor_y = y;
+    return update;
 }
 
-function writeSelf(d, insert = false, overwrite = false) {
+function writeSelf(d) {
     if (interactive_mode) {
         self_write = true;
     }
-    let update = '';
-    if (overwrite) {
-        update += '\x9B';
-        update += d.length;
-        update += 'P';  // delete
-    }
-    if (insert) {
-        update += d;
-        update += '\x9B';
-        update += d.length;
-        update += 'D'; // cursor back N
-    } else {
-        update += d;
-    }
-    term.write(update);
+    term.write(d);
 }
 
 function cursorHome() {
     // move cursor to where it was when interactive_mode started
+    let update = '';
     if (cursor_x > 0) {
-        writeSelf('\x9B' + cursor_x + 'D');
+        update += '\x9B' + cursor_x + 'D';
     } else if (cursor_x < 0) {
-        writeSelf('\x9B' + (cursor_x * -1) + 'C');
+        update += '\x9B' + (cursor_x * -1) + 'C';
     }
     if (cursor_y > 0) {
-        writeSelf('\x9B' + cursor_y + 'B');
+        update += '\x9B' + cursor_y + 'B';
     } else if (cursor_x < 0) {
-        writeSelf('\x9B' + (cursor_y * -1) + 'A');
+        update += '\x9B' + (cursor_y * -1) + 'A';
     }
     cursor_x = 0;
     cursor_y = 0;
+    return update;
 }
 
 function clearMap() {
@@ -671,45 +656,62 @@ ws.onclose = function () {
     term.write('\r\n======== Connection lost.\r\n');
     ws_ready = false;
 };
+
+function onText(input) {
+    let update = '';
+    if (map_enabled) {
+        update += clearMap();
+    }
+    update += clearCompletion();
+    update += clearCommand();
+    if (map_enabled) {
+        update += wrap(input) + reset + prompt + command;
+    } else {
+        update += input + reset + prompt + command;
+    }
+    if (completion.length > 0) {
+        update += grey + completion + reset + '\x9B' + completion.length + 'D';
+    }
+    if (map_enabled) {
+        update += writeMap();
+    }
+    term.write(update);
+}
+
+function onClearLine(line) {
+    let update = cursorHome();
+    if (line > 0) {
+        update += '\x9B' + line + 'A';
+    } else if (line < 0) {
+        update += '\x9B' + (line * -1) + 'B';
+    }
+    cursor_y += line;
+    if (map_enabled) {
+        const width = (term.cols - map_max_width - 1) - cursor_x;
+        update += '\r' + ' '.repeat(width + 1);
+    }
+    else {
+        update +='\x9B2K'; // clear line
+    }
+    update += cursorHome();
+    writeSelf(update);
+}
+
 ws.onmessage = function (e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
-            let update = '';
-            if (map_enabled) {
-                update += clearMap();
-            }
-            update += clearCompletion();
-            update += clearCommand();
-            if (map_enabled) {
-                update += wrap(msg[1][0]);
-                update += reset;
-                update += prompt;
-                update += command;
-            } else {
-                update += msg[1][0];
-                update += reset;
-                update += prompt;
-                update += command;
-            }
-            if (completion.length > 0) {
-                update += grey;
-                update += completion;
-                update += reset;
-                update += '\x9B';
-                update += completion.length;
-                update += 'D';
-            }
-            if (map_enabled) {
-                update += writeMap();
-            }
-            term.write(update);
+            onText(msg[1][0]);
             break;
         case 'raw_text':  // default text messages get /r/n appended to them before being sent, this doesn't
-            writeSelf(msg[1][0]);
+            if (map_enabled) {
+                writeSelf(clearMap() + wrap(msg[1][0]) + writeMap());
+            } else {
+                writeSelf(msg[1][0]);
+            }
             break;
         case 'insert_text':  // print raw_text and move the cursor back
-            writeSelf(msg[1][0], true);
+            writeSelf(msg[1][0] + '\x9B' + msg[1][0].length + 'D');
             break;
         case 'cursor_up':
             cursor_y += 1;
@@ -728,28 +730,19 @@ ws.onmessage = function (e) {
             writeSelf('\x1B[D');
             break;
         case 'cursor_home':  // move the cursor back to where interactive mode started
-            cursorHome();
+            writeSelf(cursorHome());
             break;
         case 'clear_line':
             /* command signature: clear_line=row
               moves cursor to line relative from where interactive_start was sent and clears it.
               cursor is then moved back to where it was.
               positive values go up, negative go down, and 0 clears the current line */
-            // TODO: coalesce these writes and make it map-aware
-            cursorHome();
-            if (msg[1][0] > 0) {
-                writeSelf('\x9B' + msg[1][0] + 'A');
-            } else if (msg[1][0] < 0) {
-                writeSelf('\x9B' + (msg[1][0] * -1) + 'B');
-            }
-            cursor_y += msg[1][0];
-            writeSelf('\x9B2K'); // clear line
-            cursorHome();
+            onClearLine(msg[1][0]);
             break;
         case 'pos_cursor':
             // move cursor to relative position from where interactive_start was issued, same rules as below
             // command signature: pos_cursor=[row, column]
-            relPos(msg[1][0], msg[1][1]);
+            writeSelf(relPos(msg[1][0], msg[1][1]));
             break;
         case 'pos_text':
             /* print text at relative position from where interactive_start was sent
@@ -758,15 +751,15 @@ ws.onmessage = function (e) {
                positive numbers go up (row), or right (column)
                negative numbers go down (row), or left (column)
                i.e. position[0,1,'msg', 4] goes straight up one line, prints 'msg ' at start of row, and returns the cursor */
-            // TODO: coalesce these writes
             const old_x = cursor_x;
             const old_y = cursor_y;
-            cursorHome();
-            relPos(msg[1][0], msg[1][1]);
-            writeSelf(msg[1][2], true);
-            relPos(old_x, old_y);
+            let update = cursorHome();
+            update += relPos(msg[1][0], msg[1][1]);
+            update += msg[1][2] + '\x9B' + msg[1][2].length + 'D'; // text + cursor back
+            update += relPos(old_x, old_y);
             cursor_x = old_x;
             cursor_y = old_y;
+            writeSelf(update);
             break;
         case 'prompt':
             prompt = msg[1][0];

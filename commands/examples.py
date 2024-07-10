@@ -13,7 +13,7 @@ TEMPLATE = """
  └─────────┘
   012345678
 
-  {label}
+{label}
 """
 INST = 'Use arrow keys to move, ESC to exit, or SPACE to mark cell'
 LABEL = "Status: cursor at ({x},{y})"
@@ -105,8 +105,7 @@ class CmdInteract(Command):
         # negative column value moves cursor left, positive value moves it right
         # negative row value moves cursor down, positive value moves it up
         # it's x,y coordinates basically with (0,0) being beginning of row at interactive_start
-        # place label 1 line up from where interactive_start was sent:
-        caller.msg(pos_text=(0,1,label))
+        caller.msg(pos_text=(0,1,label)) # place label 1 line up from where interactive_start was sent
         caller.ndb.cursor_x = cursor_x
         caller.ndb.cursor_y = cursor_y
         caller.ndb.marked = marked
