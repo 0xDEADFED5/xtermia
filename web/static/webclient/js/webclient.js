@@ -1,4 +1,4 @@
-const revision = 98;
+const revision = 99;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -687,8 +687,8 @@ function onClearLine(line) {
     }
     cursor_y += line;
     if (map_enabled) {
-        const width = (term.cols - map_max_width - 1) - cursor_x;
-        update += '\r' + ' '.repeat(width + 1);
+        const width = (term.cols - map_max_width) - cursor_x;
+        update += '\r' + ' '.repeat(width);
     }
     else {
         update +='\x9B2K'; // clear line
