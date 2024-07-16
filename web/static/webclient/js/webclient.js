@@ -1,4 +1,4 @@
-const revision = 100;
+const revision = 101;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -322,7 +322,6 @@ function onEnd() {
 }
 
 let control_down = false;
-let shift_down = false;
 let c_down = false;
 let v_down = false;
 let action_done = false;
@@ -340,12 +339,6 @@ function onKey(e) {
             return true; // pass the event along
         case 'keydown':
             switch (e.key) {
-                case 'ShiftLeft':
-                    shift_down = true;
-                    break;
-                case 'ShiftRight':
-                    shift_down = true;
-                    break;
                 case 'Control':
                     control_down = true;
                     break;
@@ -389,12 +382,6 @@ function onKey(e) {
             break;
         case 'keyup':
             switch (e.key) {
-                case 'ShiftRight':
-                    shift_down = false;
-                    break;
-                case 'ShiftLeft':
-                    shift_down = false;
-                    break;
                 case 'Control':
                     control_down = false;
                     break;
@@ -561,7 +548,7 @@ function writeMap() {
     }
     const pre_pad_len = Math.floor((term.cols - map_column - map_width) / 2);
     if (pre_pad_len > 0) {
-        pre_pad = ' '.repeat(pre_pad_len)
+        pre_pad = ' '.repeat(pre_pad_len);
     }
     for (let i = 0; i < map.length; i++) {
         update += '\x9B';
@@ -608,7 +595,6 @@ function wrap(input) {
                 }
             }
         }
-
     }
     return output;
 }
