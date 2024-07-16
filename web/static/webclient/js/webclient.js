@@ -1,4 +1,4 @@
-const revision = 99;
+const revision = 100;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -6,12 +6,12 @@ const term = new Terminal({
     fontFamily: '"Fira Code", Menlo, monospace',
     fontSize: 19,
     cursorBlink: true,
-    customGlyphs: false,
+    customGlyphs: true,
     cursorStyle: 'block',
     rescaleOverlappingGlyphs: false,
     scrollback: 8192,
 });
-term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (based on xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
+term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
 
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
@@ -65,6 +65,7 @@ let player_commands = [];
 let command = '';
 let completion = '';
 let prompt = '';
+let prompt_len = 0;
 let index = -1;
 let last_dir = 0; // 0 = none, 1 = down, 2 = up
 let interactive_mode = false;
@@ -72,7 +73,6 @@ let cursor_x = 0;  // these are used during interactive mode to keep track of re
 let cursor_y = 0;
 let self_paste = false; // did we send the paste? or is the right-click menu being used?
 let self_write = false; // if true, don't do onData events
-let command_sent = false;  // this is used to figure out if we just sent a command and should display prompt
 let enter_pressed = false;
 let censor_input = true; // until login, don't echo input commands so that password isn't leaked
 let map = '';
@@ -82,19 +82,18 @@ const ansi_color_regex = /\x1B\[[0-9;]+m/g
 const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
+const highlight = '\x1B[48;5;24m';
 let cursor_pos = 0;
 
 function doPaste() {
     navigator.clipboard.readText()
         .then(text => {
-            let update = '';
-            const sub = command.substring(cursor_pos);
-            command = command.substring(0, cursor_pos) + text + sub;
-            update += clearCompletion();
-            update += text;
-            update += sub;
-            term.write(update);
+            const end = command.substring(cursor_pos);
+            const start = command.substring(0, cursor_pos);
+            command = start + text + end;
+            term.write(clearBuffer() + prompt + start + text + '\x1B7' + end + '\x1B8');
             cursor_pos += text.length;
+            enter_pressed = false;
         })
         .catch(err => {
             console.log('Clipboard error: ', err);
@@ -115,61 +114,11 @@ function getCompletion(c) {
     return [false];
 }
 
-function countLines(input) {
-    // TODO: think about actually tracking cursor row position and prompt position instead of this
-    // this is a temporary workaround because I didn't consider multi-line input from the start
-    /* calculate effective line count of text that has been rendered so that
-       multi-line completion hints/command buffers can be accurately erased.
-       gotcha #1: lines longer than terminal width will be wrapped in the terminal
-                  but the string doesn't contain \n
-       gotcha #2: control codes make the string longer but aren't rendered */
-    const width = map_enabled ? map_column - 1 : term.cols;
-    const s = input.replace(ansi_color_regex, '').split(/\r?\n/);
-    let lines = s.length;
-    for (let i = 0; i < s.length; i++) {
-        if (s[i].length > width) {
-            lines += Math.floor(s[i].length / width);
-        }
-    }
-    return lines;
-}
-
-function clearCommand() {
-    // clear previous command, supports multi-line commands
-    let update = '';
-    if (command.length > 0) {
-        const lines = countLines(command);
-        const width = map_enabled ? map_column - 1 : term.cols;
-        update += '\r';
-        update += ' '.repeat(width);
-        for (let i = 0; i < lines - 1; i++) {
-            update += '\x1B[A'; // up arrow
-            update += '\r';
-            update += ' '.repeat(width);
-        }
-        update += '\r';
-    } else if (prompt.length > 0) {
-        update += '\r';
-        update += ' '.repeat(prompt.length);
-        update += '\r';
-    }
-    return update;
-}
-
-function clearCompletion() {
-    let update = '';
-    if (completion.length > 0) {
-        const lines = countLines(completion);
-        const width = map_enabled ? map_column - 1 : term.cols;
-        update += '\x1B7'; // save cursor
-        update += ' '.repeat(width - cursor_pos);
-        for (let i = 0; i < lines - 1; i++) {
-            update += '\r';
-            update += '\x1B[B'; // down arrow
-            update += ' '.repeat(width);
-        }
-        update += '\x1B8'; // restore cursor
-        completion = '';
+function clearBuffer() {
+    // clear buffer from cursor to the end
+    let update = '\r\x1B[0J';
+    if (map_enabled) {
+        update += clearMap() + writeMap();
     }
     return update;
 }
@@ -182,30 +131,18 @@ function onDefault(e) {
     let update = '';
     // insert characters if cursor has been moved
     if (cursor_pos !== command.length) {
-        const sub = command.substring(cursor_pos);
-        // overwrite command from new position and move the cursor back
-        update += e + sub + '\x9B' + sub.length + 'D';
+        update += clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C'
         term.write(update);
         return;
     }
     const result = getCompletion(command);
-    update += clearCompletion();
+    update += clearBuffer() + prompt + command;
     if (result[0]) {
         const sub = result[1].substring(command.length);
         completion = sub;
-        update += '\x1B7'; // save cursor
-        // write new typed char + grey completion, reset color
-        update += e;
-        update += grey;
-        update += sub;
-        update += reset;
-        update += '\x1B8'; // restore cursor
-        update += '\x9B';
-        update += e.length;
-        update += 'C'; // right arrow
+        update += '\x1B7' + grey + sub + reset + '\x1B8';
     } else {
         completion = '';
-        update += e;
     }
     term.write(update);
 }
@@ -213,12 +150,15 @@ function onDefault(e) {
 function onEnter() {
     if (command !== '') {
         let update = '';
+        const lines = command.split('\n');
         if (censor_input) {
             ws.send(JSON.stringify(['text', [command], {}]));
-            update += clearCommand();
+            if (lines.length > 1 && cursor_pos > lines[0].length) {
+                update += '\x9B' + (lines.length - 1) + 'F';
+            }
+            update += clearBuffer() + '\r\n';
             cursor_pos = 0;
             command = '';
-            update += '\r\n';
             term.write(update);
             return;
         }
@@ -232,65 +172,70 @@ function onEnter() {
             history.splice(found_index, 1);
             index = history.push(command) - 1;
         }
-        update += clearCommand();
-        // add correct number of newlines
-        const width = map_enabled ? map_column - 1 : term.cols;
-        const lines = Math.ceil(command.length / width);
-        update += command_color;
-        update += command;
-        update += reset;
-        update += '\r\n'.repeat(lines);
+        if (lines.length > 1 && cursor_pos > lines[0].length) {
+            update += '\x9B' + (lines.length - 1) + 'F';
+        }
+        update += clearBuffer() + command_color + command + reset + '\r\n';
         term.write(update);
         last_dir = 1;
         enter_pressed = true;
-        cursor_pos = command.length;
-        command_sent = true;
+        cursor_pos = 0;
         ws.send(JSON.stringify(['text', [command], {}]));
     }
 }
 
 function onDelete() {
     if (cursor_pos < command.length) {
-        if (command.length - cursor_pos === 1) {
-            command = command.slice(0, -1);
-            term.write(' \x9B1D');  // print a space to cover it up, move the cursor back
-        } else {
-            const sub = command.substring(cursor_pos + 1);
-            command = command.substring(0, cursor_pos) + sub;
-            // shorten the current command, print it, add space to hide the last char, move cursor back
-            term.write(sub + ' ' + '\x9B' + (sub.length + 1) + 'D');
-        }
+        const sub = command.substring(cursor_pos + 1);
+        command = command.substring(0, cursor_pos) + sub;
+        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
     }
 }
 
 function onBackspace() {
-    let update = '';
-    update += clearCompletion();
     if (command.length !== 0 && cursor_pos > 0) {
+        const lines = command.split('\n');
+        if (lines.length > 1) {
+            if (cursor_pos > lines[0].length) {
+                // move cursor up if necessary
+                term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+            } else {
+                term.write(clearBuffer() + prompt);
+            }
+            command = '';
+            cursor_pos = 0;
+            return;
+        }
         // backspace can be in the middle of a line
         const sub = command.substring(cursor_pos);
         command = command.substring(0, cursor_pos - 1) + sub;
         cursor_pos -= 1;
-        // move cursor back, write shortened command + ' ', move cursor back
-        update += '\x9B1D';
-        update += sub;
-        update += ' ';
-        update += '\x9B';
-        update += (sub.length + 1);
-        update += 'D';
+        let update = clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C';
+        const result = getCompletion(command);
+        if (result[0]) {
+            const c = result[1].substring(command.length);
+            completion = c;
+            update += '\x1B7' + grey + c + reset + '\x1B8';
+        } else {
+            completion = '';
+        }
         term.write(update);
     }
 }
 
 function onArrowRight() {
     if (completion.length > 0) {
-        term.write(completion);
         command = command.concat(completion);
+        term.write(clearBuffer() + prompt + command);
         cursor_pos += completion.length;
         completion = '';
-    } else if (cursor_pos < command.length - 1) {
+        return;
+    }
+    const lines = command.split('\n');
+    if ((lines.length > 1 && cursor_pos < lines[0].trim().length) || (lines.length === 1 && cursor_pos < command.length)) {
         cursor_pos += 1;
-        term.write('\x9B1C');
+        // rewrite the whole thing to remove highlight if necessary
+        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
     }
 }
 
@@ -300,35 +245,35 @@ function onArrowUp() {
     } else if (last_dir !== 0 && index > 0) {
         index -= 1;
     }
-    let update = '';
-    update += clearCompletion();
-    update += clearCommand();
-    update += prompt;
+    const lines = command.split('\n');
     command = history[index];
-    update += command;
-    term.write(update);
+    if (lines.length > 1 && cursor_pos > lines[0].length) {
+        term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
+    } else {
+        term.write(clearBuffer() + prompt + command);
+    }
     cursor_pos = command.length;
     last_dir = 2;
 }
 
 function onArrowDown() {
+    const lines = command.split('\n');
     if (index < history.length - 1) {
-        let update = '';
         index += 1;
-        update += clearCompletion();
-        update += clearCommand();
-        update += prompt;
         command = history[index];
-        update += command;
-        term.write(update);
+        if (lines.length > 1 && cursor_pos > lines[0].length) {
+            term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
+        } else {
+            term.write(clearBuffer() + prompt + command);
+        }
         cursor_pos = command.length;
         last_dir = 1;
     } else if (cursor_pos !== 0) { // we're at the bottom of history, clear it
-        let update = '';
-        update += clearCompletion();
-        update += clearCommand();
-        update += prompt;
-        term.write(update);
+        if (lines.length > 1 && cursor_pos > lines[0].length) {
+            term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+        } else {
+            term.write(clearBuffer() + prompt);
+        }
         command = '';
         completion = '';
         cursor_pos = 0;
@@ -337,30 +282,47 @@ function onArrowDown() {
 }
 
 function onArrowLeft() {
-    if (cursor_pos > prompt.length - 1) {
-        let update = '';
-        update += clearCompletion();
-        update += '\x9B1D';
-        cursor_pos -= 1;
-        term.write(update);
+    if (cursor_pos > 0) {
+        const lines = command.split('\n');
+        if (lines.length > 1) {
+            if (cursor_pos > lines[0].length) {
+                // move cursor up first if necessary
+                term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+            } else {
+                term.write(clearBuffer() + prompt);
+            }
+            cursor_pos = 0;
+            command = '';
+        } else {
+            cursor_pos -= 1;
+            term.write('\x9B1D');
+        }
     }
 }
 
 function onHome() {
     if (cursor_pos > 0) {
-        term.write('\x9B' + cursor_pos + 'D');
         cursor_pos = 0;
+        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + prompt_len + 'C');
     }
 }
 
 function onEnd() {
     if (cursor_pos < command.length) {
-        term.write('\x9B' + (command.length - cursor_pos) + 'C');
-        cursor_pos = command.length;
+        const lines = command.split('\n');
+        if (lines.length > 0) {
+            // for multi-line commands, go to end of first line.  proper multi-line editing might be added later...
+            term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (prompt_len + lines[0].length) + 'C');
+            cursor_pos = lines[0].length;
+        } else {
+            term.write(clearBuffer() + prompt + command);
+            cursor_pos = command.length;
+        }
     }
 }
 
 let control_down = false;
+let shift_down = false;
 let c_down = false;
 let v_down = false;
 let action_done = false;
@@ -378,6 +340,12 @@ function onKey(e) {
             return true; // pass the event along
         case 'keydown':
             switch (e.key) {
+                case 'ShiftLeft':
+                    shift_down = true;
+                    break;
+                case 'ShiftRight':
+                    shift_down = true;
+                    break;
                 case 'Control':
                     control_down = true;
                     break;
@@ -421,6 +389,12 @@ function onKey(e) {
             break;
         case 'keyup':
             switch (e.key) {
+                case 'ShiftRight':
+                    shift_down = false;
+                    break;
+                case 'ShiftLeft':
+                    shift_down = false;
+                    break;
                 case 'Control':
                     control_down = false;
                     break;
@@ -440,10 +414,7 @@ function onKey(e) {
     }
     if (enter_pressed && e.key !== 'Enter') {  // clear the command
         enter_pressed = false;
-        let update = '';
-        update += clearCommand();
-        update += prompt;
-        term.write(update);
+        term.write(clearBuffer() + prompt);
         command = '';
         cursor_pos = 0;
     }
@@ -452,9 +423,9 @@ function onKey(e) {
         action_done = true;
         return false;
     } else if (control_down && v_down && !action_done) {
+        action_done = true;
         self_paste = true;
         doPaste();
-        action_done = true;
         return false;
     }
     return true;
@@ -474,13 +445,12 @@ function onData(d) {
         // paste!
         if (!self_paste) {
             d = d.replace(/\r\n?/g, '\r\n');
-            let update = clearCompletion();
-            const sub = command.substring(cursor_pos);
-            command = command.substring(0, cursor_pos) + d + sub;
-            update += d;
-            update += sub;
-            term.write(update);
+            const end = command.substring(cursor_pos);
+            const start = command.substring(0, cursor_pos);
+            command = start + d + end;
+            term.write(clearBuffer() + prompt + start + d + '\x1B7' + end + '\x1B8');
             cursor_pos += d.length;
+            enter_pressed = false;
         }
         self_paste = false;
         return;
@@ -528,10 +498,10 @@ function relPos(x, y) {
     if (y > 0) {
         update += '\x9B' + y + 'A'; // cursor up N
     } else if (y < 0) {
-        update +='\x9B' + (y * -1) + 'B'; // cursor down N
+        update += '\x9B' + (y * -1) + 'B'; // cursor down N
     }
     if (x > 0) {
-        update +='\x9B' + x + 'C'; // cursor forward N
+        update += '\x9B' + x + 'C'; // cursor forward N
     } else if (x < 0) {
         update += '\x9B' + (x * -1) + 'D'; // cursor back N
     }
@@ -659,21 +629,21 @@ ws.onclose = function () {
 
 function onText(input) {
     let update = '';
+    update += clearBuffer();
     if (map_enabled) {
-        update += clearMap();
-    }
-    update += clearCompletion();
-    update += clearCommand();
-    if (map_enabled) {
-        update += wrap(input) + reset + prompt + command;
+        update += wrap(input) + reset;
+        update += clearMap() + writeMap();
     } else {
-        update += input + reset + prompt + command;
+        update += input + reset;
     }
-    if (completion.length > 0) {
+    update += prompt;
+    if (command.length > 0 && completion.length === 0) {
+        update += '\x1B7' + highlight + command + reset + '\x1B8';
+        term.write(update);
+        return;
+    } else if (completion.length > 0) {
+        update += highlight + command + reset;
         update += grey + completion + reset + '\x9B' + completion.length + 'D';
-    }
-    if (map_enabled) {
-        update += writeMap();
     }
     term.write(update);
 }
@@ -689,9 +659,8 @@ function onClearLine(line) {
     if (map_enabled) {
         const width = (term.cols - map_max_width) - cursor_x;
         update += '\r' + ' '.repeat(width);
-    }
-    else {
-        update +='\x9B2K'; // clear line
+    } else {
+        update += '\x9B2K'; // clear line
     }
     update += cursorHome();
     writeSelf(update);
@@ -763,6 +732,7 @@ ws.onmessage = function (e) {
             break;
         case 'prompt':
             prompt = msg[1][0];
+            prompt_len = msg[1][0].replace(ansi_color_regex, '').length;
             break;
         case 'audio':
             audio.pause();
@@ -806,29 +776,19 @@ ws.onmessage = function (e) {
             ws.send(JSON.stringify(['map_size', [map_max_width, term.rows - 1], {}]));
             break;
         case 'map':
-            map = msg[1].split(/\r?\n/);
-            // strip ANSI before checking width
-            const stripped = msg[1].replace(ansi_color_regex, '').split(/\r?\n/);
-            // figure out map width so it can be centered
-            map_width = 0;
-            map_height = map.length;
-            for (let i = 0; i < stripped.length; i++) {
-                if (stripped[i].length > map_width) {
-                    map_width = stripped[i].length;
-                }
-            }
             if (map_enabled) {
-                let update = '';
-                update += clearMap();
-                update += clearCompletion();
-                update += clearCommand();
-                update += writeMap();
-                // move cursor down to bottom of screen
-                const lines = term.rows - term.buffer.active.cursorY - 1;
-                if (lines > 0) {
-                    update += '\r\n'.repeat(lines);
+                map = msg[1].split(/\r?\n/);
+                // strip ANSI before checking width
+                const stripped = msg[1].replace(ansi_color_regex, '').split(/\r?\n/);
+                // figure out map width so it can be centered
+                map_width = 0;
+                map_height = map.length;
+                for (let i = 0; i < stripped.length; i++) {
+                    if (stripped[i].length > map_width) {
+                        map_width = stripped[i].length;
+                    }
                 }
-                term.write(update);
+                term.write(clearMap() + writeMap());
             }
             break;
         default:

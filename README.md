@@ -26,7 +26,6 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
 
 ### Todo
-- Shift + arrow key selection
 - Save history to file
 - Persist command history?
 
