@@ -1,4 +1,4 @@
-const revision = 101;
+const revision = 102;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -15,10 +15,9 @@ term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revi
 
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
-const unicode11Addon = new Unicode11Addon.Unicode11Addon();
-term.loadAddon(unicode11Addon);
-term.unicode.activeVersion = '11';
-
+// const unicode11Addon = new Unicode11Addon.Unicode11Addon();
+// term.loadAddon(unicode11Addon);
+// term.unicode.activeVersion = '11';
 const fitAddon = new FitAddon.FitAddon();
 term.loadAddon(fitAddon);
 
@@ -224,7 +223,7 @@ function onBackspace() {
 }
 
 function onArrowRight() {
-    if (completion.length > 0) {
+    if (completion.length > 0 && cursor_pos === command.length) {
         command = command.concat(completion);
         term.write(clearBuffer() + prompt + command);
         cursor_pos += completion.length;
@@ -234,6 +233,7 @@ function onArrowRight() {
     const lines = command.split('\n');
     if ((lines.length > 1 && cursor_pos < lines[0].trim().length) || (lines.length === 1 && cursor_pos < command.length)) {
         cursor_pos += 1;
+        completion = '';
         // rewrite the whole thing to remove highlight if necessary
         term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
     }
