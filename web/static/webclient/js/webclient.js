@@ -1,4 +1,4 @@
-const revision = 102;
+const revision = 103;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -179,6 +179,7 @@ function onEnter() {
         last_dir = 1;
         enter_pressed = true;
         cursor_pos = 0;
+        completion = '';
         ws.send(JSON.stringify(['text', [command], {}]));
     }
 }
