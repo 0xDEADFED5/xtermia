@@ -1,4 +1,4 @@
-const revision = 103;
+const revision = 104;
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
@@ -211,11 +211,15 @@ function onBackspace() {
         command = command.substring(0, cursor_pos - 1) + sub;
         cursor_pos -= 1;
         let update = clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C';
-        const result = getCompletion(command);
-        if (result[0]) {
-            const c = result[1].substring(command.length);
-            completion = c;
-            update += '\x1B7' + grey + c + reset + '\x1B8';
+        if (cursor_pos !== 0) {
+            const result = getCompletion(command);
+            if (result[0]) {
+                const c = result[1].substring(command.length);
+                completion = c;
+                update += '\x1B7' + grey + c + reset + '\x1B8';
+            } else {
+                completion = '';
+            }
         } else {
             completion = '';
         }
