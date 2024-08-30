@@ -1,18 +1,294 @@
-const revision = 104;
+const revision = 105;
+// try to get options from localstorage, otherwise set the defaults
+let fsize = localStorage.getItem('fontsize');
+if (fsize === null) {
+    fsize = 19;
+} else {
+    fsize = parseInt(fsize);
+}
+const cstyle = localStorage.getItem('cursorstyle') || 'block';
+let cblink = localStorage.getItem('cursorblink');
+if (cblink === null) {
+    cblink = true;
+} else {
+    cblink = cblink === 'true';
+}
+let min_contrast = localStorage.getItem('contrast');
+if (min_contrast === null) {
+    min_contrast = 1;
+} else {
+    min_contrast = parseFloat(min_contrast);
+}
+let screen_reader = localStorage.getItem('reader');
+if (screen_reader === null) {
+    screen_reader = false;
+} else {
+    screen_reader = screen_reader === 'true';
+}
+let sback = localStorage.getItem('scrollback');
+if (sback === null) {
+    sback = 8192;
+} else {
+    sback = parseInt(sback);
+}
+let custom_glyphs = localStorage.getItem('glyphs');
+if (custom_glyphs === null) {
+    custom_glyphs = true;
+} else {
+    custom_glyphs = custom_glyphs === 'true';
+}
+let autosave_setting = localStorage.getItem('autosave');
+if (autosave_setting === null) {
+    autosave_setting = false;
+} else {
+    autosave_setting = autosave_setting === 'true';
+}
+const font_family = localStorage.getItem('font') || '"Fira Code", Menlo, monospace';
 const term = new Terminal({
     convertEol: true,
     allowProposedApi: true,
     disableStdin: false,
-    fontFamily: '"Fira Code", Menlo, monospace',
-    fontSize: 19,
-    cursorBlink: true,
-    customGlyphs: true,
-    cursorStyle: 'block',
+    fontFamily: font_family,
+    fontSize: fsize,
+    cursorBlink: cblink,
+    customGlyphs: custom_glyphs,
+    cursorStyle: cstyle,
     rescaleOverlappingGlyphs: false,
-    scrollback: 8192,
+    scrollback: sback,
+    minimumContrastRatio: min_contrast,
+    screenReaderMode: screen_reader,
 });
-term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\r\n');
+term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\n');
+term.write('Enter :help for a list of \x1b[1;97mxtermia\x1b[0m commands')
+// let recording = false;
+let player_commands = [];
+const commands = new Map();
+commands.set(':help', [help, ':help = This lists all available commands.']);
+commands.set(':fontsize', [fontsize, ':fontsize [size] = Change font size to [size]. Default = 19.']);
+commands.set(':fontfamily', [fontfamily, ':fontfamily [font] = Change font family. Default = "Fira Code".']);
+commands.set(':contrast', [contrast, ':contrast [ratio] = Change minimum contrast ratio, 21 = black and white. Default = 1.']);
+commands.set(':reader', [reader, ':reader = Toggle screenreader mode for NVDA or VoiceOver. Default = off.']);
+commands.set(':cursorstyle', [cursorstyle, ':cursorstyle [block,underline,bar] = Change cursor style. Default = block.']);
+commands.set(':cursorblink', [cursorblink, ':cursorblink = Toggle cursor blink. Default = on.']);
+commands.set(':glyphs', [glyphs, ':glyphs = Toggle custom glyphs (fixes some box-drawing glyphs). Default = on.']);
+commands.set(':scrollback', [scrollback, ':scrollback = Rows of terminal history. Default = 8192.']);
+// commands.set(':record', [record, ':record = Begin asciinema recording (https://asciinema.org/).']);
+// commands.set(':stop', [stop, ':stop = Stop asciinema recording and save JSON file.']);
+commands.set(':save', [save, ':save = Save terminal history to text file.']);
+commands.set(':autosave', [autosave, ':autosave = Toggle autosave. If enabled, history will be saved to file on connection close. Default = off.']);
+commands.set(':reset', [reset_command, ':reset = Clear local storage and reset settings to default.']);
+for (const [key, value] of commands) {
+    player_commands.push(key);
+}
 
+function help(arg) {
+    let update = 'Available commands:\n';
+    for (const [key, value] of commands) {
+        if (map_enabled) {
+            update += wrap(value[1]) + '\n';
+        } else {
+            update += value[1] + '\n';
+        }
+    }
+    if (map_enabled) {
+        update += clearMap() + writeMap();
+    }
+    term.write(update);
+}
+
+function reset_command(arg) {
+    localStorage.clear();
+    term.options.fontSize = 19;
+    term.options.cursorStyle = 'block';
+    term.options.cursorBlink = true;
+    term.options.screenReaderMode = false;
+    term.options.minimumContrastRatio = 1;
+    term.options.scrollback = 8192;
+    term.options.customGlyphs = true;
+    autosave_setting = false;
+    term.options.fontFamily = '"Fira Code", Menlo, monospace';
+    fitAddon.fit();
+}
+
+function fontfamily(arg) {
+    try {
+        term.options.fontFamily = arg;
+        fitAddon.fit();
+        localStorage.setItem("font", arg);
+        term.writeln('Font changed to: ' + arg + '.');
+        term.writeln('If this looks terrible, enter :reset to go back to default font.');
+    } catch (e) {
+        console.error(e);
+        term.writeln(e);
+        term.options.fontFamily = '"Fira Code", Menlo, monospace';
+    }
+}
+
+function glyphs(arg) {
+    custom_glyphs = !custom_glyphs;
+    term.options.customGlyphs = custom_glyphs;
+    if (custom_glyphs) {
+        term.writeln('Custom glyphs are ON.');
+        localStorage.setItem("glyphs", "true");
+    } else {
+        term.writeln('Custom glyphs are OFF.');
+        localStorage.setItem("glyphs", "false");
+    }
+}
+
+function scrollback(arg) {
+    term.options.scrollback = parseInt(arg);
+    localStorage.setItem("scrollback", arg);
+}
+
+function reader(arg) {
+    // TODO: let Evennia know screenreader status
+    screen_reader = !screen_reader;
+    term.options.screenReaderMode = screen_reader;
+    if (screen_reader) {
+        term.writeln('Screen reader is ON.');
+        localStorage.setItem("reader", "true");
+    } else {
+        term.writeln('Screen reader is OFF.');
+        localStorage.setItem("reader", "false");
+    }
+}
+
+function contrast(arg) {
+    term.options.minimumContrastRatio = parseFloat(arg);
+    localStorage.setItem("contrast", arg);
+    term.writeln('Minimum contrast ratio is: ' + arg + '.');
+}
+
+function cursorblink(arg) {
+    cblink = !cblink;
+    term.options.cursorBlink = cblink;
+    if (cblink) {
+        term.writeln('Cursor blink is ON.');
+        localStorage.setItem("cursorblink", "true");
+    } else {
+        term.writeln('Cursor blink is OFF.');
+        localStorage.setItem("cursorblink", "false");
+    }
+}
+
+function cursorstyle(arg) {
+    if (arg === 'block' || arg === 'underline' || arg === 'bar') {
+        term.options.cursorStyle = arg;
+        localStorage.setItem("cursorstyle", arg);
+        term.writeln('Cursor style is: ' + arg + '.');
+    } else {
+        term.writeln("Invalid cursor style! Must be block, underline, or bar.");
+    }
+}
+
+function fontsize(arg) {
+    term.options.fontSize = parseInt(arg);
+    fitAddon.fit();
+    localStorage.setItem("fontsize", arg);
+    term.writeln('Font size is: ' + arg + '.');
+}
+
+function save(arg) {
+    history = '';
+    for (let i = 0; i < term.buffer.active.length; i++) {
+        history += term.buffer.active.getLine(i).translateToString() + '\n';
+    }
+    saveBlob('history.txt', history);
+    localStorage.setItem('history', history);
+    term.writeln('Terminal history saved.');
+}
+
+function autosave(arg) {
+    autosave_setting = !autosave_setting;
+    if (autosave_setting) {
+        localStorage.setItem('autosave', 'true');
+        term.writeln('Autosave is ON.');
+    } else {
+        localStorage.setItem('autosave', 'false');
+        term.writeln('Autosave is OFF.');
+    }
+}
+
+// let recording_header = {
+//     "version": 2,
+//     "width": 80,
+//     "height": 24,
+//     "timestamp": 0,
+//     "duration": 0,
+//     "title": "xtermia recording"
+// };
+// let recording_start = 0;
+// let recording_buffer = '';
+//
+// function record(arg) {
+//     recording_start = Date.now();
+//     recording_header.width = term.cols;
+//     recording_header.height = term.rows;
+//     recording_header.timestamp = Math.round(recording_start / 1000);
+//     recording = true;
+// }
+//
+// function addRecord(str) {
+//     const time = (Date.now() - recording_start) / 1000;
+//     recording_buffer += JSON.stringify([time, "o", str]) + '\n';
+// }
+
+// function wrapWrite(d) {
+//     // wrap all term.write() calls with this to enable recording
+//     term.write(d);
+//     if (recording) {
+//         addRecord(d);
+//     }
+// }
+//
+// function wrapWriteln(d) {
+//     // wrap all term.writeln() calls with this to enable recording
+//     term.writeln(d);
+//     if (recording) {
+//         addRecord(d);
+//     }
+// }
+
+// function stop(arg) {
+//     if (recording) {
+//         recording = false;
+//         recording_header.duration = (Date.now() - recording_start) / 1000;
+//         saveBlob('recording.cast', JSON.stringify(recording_header) + '\n' + recording_buffer);
+//     } else {
+//         term.writeln("Recording hasn't begun!");
+//     }
+// }
+
+function handle_command(command) {
+    for (const [key, value] of commands) {
+        if (command.startsWith(key)) {
+            if (command.includes(' ')) {
+                value[0](command.substring(command.indexOf(' ') + 1));
+            } else {
+                value[0]();
+            }
+        }
+    }
+}
+
+function saveBlob(filename, data) {
+    const blob = new Blob([data], {type: 'text/csv'});
+    if (window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveBlob(blob, filename);
+    } else {
+        const elem = window.document.createElement('a');
+        elem.href = window.URL.createObjectURL(blob);
+        elem.download = filename;
+        document.body.appendChild(elem);
+        elem.click();
+        document.body.removeChild(elem);
+    }
+}
+
+// import {handle_command, init} from './commands.js';
+//
+// init(term);
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
 // const unicode11Addon = new Unicode11Addon.Unicode11Addon();
@@ -58,9 +334,9 @@ term.onResize(e => {
     }
 });
 
+// let history_buffer = '';
 const max_len = 128;
 let history = [];
-let player_commands = [];
 let command = '';
 let completion = '';
 let prompt = '';
@@ -146,8 +422,36 @@ function onDefault(e) {
     term.write(update);
 }
 
+function onCommand() {
+    // this is for internal commands like :help
+    let update = '';
+    if (history.length > max_len) {
+        history.shift();
+    }
+    const found_index = history.indexOf(command);
+    if (found_index === -1) {
+        index = history.push(command) - 1;
+    } else {
+        history.splice(found_index, 1);
+        index = history.push(command) - 1;
+    }
+    update += clearBuffer() + command_color + command + reset + '\n';
+    term.write(update);
+    last_dir = 1;
+    enter_pressed = true;
+    cursor_pos = 0;
+    completion = '';
+    handle_command(command);
+    command = '';
+    term.write(prompt);
+}
+
 function onEnter() {
     if (command !== '') {
+        if (command[0] === ':') {
+            onCommand();
+            return;
+        }
         let update = '';
         const lines = command.split('\n');
         if (censor_input) {
@@ -155,7 +459,7 @@ function onEnter() {
             if (lines.length > 1 && cursor_pos > lines[0].length) {
                 update += '\x9B' + (lines.length - 1) + 'F';
             }
-            update += clearBuffer() + '\r\n';
+            update += clearBuffer() + '\n';
             cursor_pos = 0;
             command = '';
             term.write(update);
@@ -174,7 +478,7 @@ function onEnter() {
         if (lines.length > 1 && cursor_pos > lines[0].length) {
             update += '\x9B' + (lines.length - 1) + 'F';
         }
-        update += clearBuffer() + command_color + command + reset + '\r\n';
+        update += clearBuffer() + command_color + command + reset + '\n';
         term.write(update);
         last_dir = 1;
         enter_pressed = true;
@@ -604,18 +908,22 @@ function wrap(input) {
     return output;
 }
 
+// term.onWriteParsed(e => onWriteParsed(e));
 term.onData(e => onData(e));
 term.attachCustomKeyEventHandler(e => onKey(e));
 term.open(el_terminal);
 fitAddon.fit();
 ws.onopen = function () {
-    term.write('\r\n======== Connected.\r\n');
+    term.write('\n======== Connected.\n');
     ws_ready = true;
     ws.send(JSON.stringify(['term_size', [term.cols, term.rows], {}]));
 };
 ws.onclose = function () {
-    term.write('\r\n======== Connection lost.\r\n');
+    term.write('\n======== Connection lost.\n');
     ws_ready = false;
+    if (autosave_setting) {
+        save();
+    }
 };
 
 function onText(input) {
@@ -663,7 +971,7 @@ ws.onmessage = function (e) {
         case 'text':
             onText(msg[1][0]);
             break;
-        case 'raw_text':  // default text messages get /r/n appended to them before being sent, this doesn't
+        case 'raw_text':  // default text messages get \n appended to them before being sent, this doesn't
             if (map_enabled) {
                 writeSelf(clearMap() + wrap(msg[1][0]) + writeMap());
             } else {
@@ -747,7 +1055,7 @@ ws.onmessage = function (e) {
             term.write('\x1B8'); // restore cursor
             break;
         case 'player_commands':
-            player_commands = msg[1];
+            player_commands.push(...msg[1]);
             break;
         case 'map_enable':
             map_enabled = true;
@@ -788,7 +1096,7 @@ ws.onmessage = function (e) {
 }
 ws.onerror = function (e) {
     console.log(e);
-    term.write('\r\n======== Connection error: ' + e + '\r\n');
+    term.write('\n======== Connection error: ' + e + '\n');
 };
 term.focus();
 window.addEventListener('focus', (e) => {

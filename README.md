@@ -18,16 +18,13 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Ctrl+C to copy, Ctrl+V to paste in addition to the right-click copy/paste
 - Clickable web links
 - Completion suggestions based on Evennia commands available at login
+- Client side options for font size, screenreader, etc. see enter :help for a command list
 - Tells Evennia the terminal width/height at startup and on resize
 - Won't echo commands or add to command history until after login (won't echo password)
 - Sound/music (see [examples.py](commands/examples.py))
 - Interactive terminal mode (see [examples.py](commands/examples.py)) for an example, or type 'interact' in the game
 - All files are local, no internet required
 - Uses [Fira Code](https://github.com/tonsky/FiraCode) font because it has great box drawing characters
-
-### Todo
-- Save history to file
-- Persist command history?
 
 ### Installation for a fresh game
 Copy this repo's entire folder structure to your Evennia "mygame" game folder.
