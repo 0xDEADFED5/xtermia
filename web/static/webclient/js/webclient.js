@@ -1,4 +1,4 @@
-const revision = 105;
+const revision = 106;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -63,20 +63,20 @@ term.write('Enter :help for a list of \x1b[1;97mxtermia\x1b[0m commands')
 // let recording = false;
 let player_commands = [];
 const commands = new Map();
-commands.set(':help', [help, ':help = This lists all available commands.']);
-commands.set(':fontsize', [fontsize, ':fontsize [size] = Change font size to [size]. Default = 19.']);
-commands.set(':fontfamily', [fontfamily, ':fontfamily [font] = Change font family. Default = "Fira Code".']);
-commands.set(':contrast', [contrast, ':contrast [ratio] = Change minimum contrast ratio, 21 = black and white. Default = 1.']);
-commands.set(':reader', [reader, ':reader = Toggle screenreader mode for NVDA or VoiceOver. Default = off.']);
-commands.set(':cursorstyle', [cursorstyle, ':cursorstyle [block,underline,bar] = Change cursor style. Default = block.']);
-commands.set(':cursorblink', [cursorblink, ':cursorblink = Toggle cursor blink. Default = on.']);
-commands.set(':glyphs', [glyphs, ':glyphs = Toggle custom glyphs (fixes some box-drawing glyphs). Default = on.']);
-commands.set(':scrollback', [scrollback, ':scrollback = Rows of terminal history. Default = 8192.']);
+commands.set(':help', [help, ':help = This lists all available commands']);
+commands.set(':fontsize', [fontsize, ':fontsize [size] = Change font size to [size]. Default = 19']);
+commands.set(':fontfamily', [fontfamily, ':fontfamily [font] = Change font family. Default = "Fira Code"']);
+commands.set(':contrast', [contrast, ':contrast [ratio] = Change minimum contrast ratio, 21 = black and white. Default = 1']);
+commands.set(':reader', [reader, ':reader = Toggle screenreader mode for NVDA or VoiceOver. Default = off']);
+commands.set(':cursorstyle', [cursorstyle, ':cursorstyle [block,underline,bar] = Change cursor style. Default = block']);
+commands.set(':cursorblink', [cursorblink, ':cursorblink = Toggle cursor blink. Default = on']);
+commands.set(':glyphs', [glyphs, ':glyphs = Toggle custom glyphs (fixes some box-drawing glyphs). Default = on']);
+commands.set(':scrollback', [scrollback, ':scrollback [rows] = Rows of terminal history. Default = 8192']);
 // commands.set(':record', [record, ':record = Begin asciinema recording (https://asciinema.org/).']);
 // commands.set(':stop', [stop, ':stop = Stop asciinema recording and save JSON file.']);
-commands.set(':save', [save, ':save = Save terminal history to text file.']);
-commands.set(':autosave', [autosave, ':autosave = Toggle autosave. If enabled, history will be saved to file on connection close. Default = off.']);
-commands.set(':reset', [reset_command, ':reset = Clear local storage and reset settings to default.']);
+commands.set(':save', [save, ':save = Save terminal history to history.txt']);
+commands.set(':autosave', [autosave, ':autosave = Toggle autosave. If enabled, history will be saved on connection close. Default = off']);
+commands.set(':reset', [reset_command, ':reset = Clear local storage and reset settings to default']);
 for (const [key, value] of commands) {
     player_commands.push(key);
 }
@@ -286,9 +286,6 @@ function saveBlob(filename, data) {
     }
 }
 
-// import {handle_command, init} from './commands.js';
-//
-// init(term);
 let ws_ready = false;
 let ws = new WebSocket(wsurl + '?' + csessid);
 // const unicode11Addon = new Unicode11Addon.Unicode11Addon();
