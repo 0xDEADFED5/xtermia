@@ -19,6 +19,7 @@ This is a demo that you can copy over a freshly initialized Evennia game.
 - Clickable web links
 - Completion suggestions based on Evennia commands available at login
 - Client side options for font size, screenreader, etc. enter :help for a command list
+- Record sessions and share them at [Terminoid](http://terminoid.com/)
 - Tells Evennia the terminal width/height at startup and on resize
 - Won't echo commands or add to command history until after login (won't echo password)
 - Sound/music (see [examples.py](commands/examples.py))
