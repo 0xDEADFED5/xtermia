@@ -1,4 +1,4 @@
-const revision = 106;
+const revision = 108;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -58,9 +58,19 @@ const term = new Terminal({
     minimumContrastRatio: min_contrast,
     screenReaderMode: screen_reader,
 });
-term.write('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\n');
-term.write('Enter :help for a list of \x1b[1;97mxtermia\x1b[0m commands')
-// let recording = false;
+let recording_start = 0;
+let recording_buffer = '';
+let recording = false;
+let recording_header = {
+    "version": 2,
+    "width": 80,
+    "height": 24,
+    "timestamp": 0,
+    "duration": 0,
+    "title": "xtermia recording"
+};
+wrapWrite('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\n');
+wrapWrite('Enter :help for a list of \x1b[1;97mxtermia\x1b[0m commands')
 let player_commands = [];
 const commands = new Map();
 commands.set(':help', [help, ':help = This lists all available commands']);
@@ -72,8 +82,8 @@ commands.set(':cursorstyle', [cursorstyle, ':cursorstyle [block,underline,bar] =
 commands.set(':cursorblink', [cursorblink, ':cursorblink = Toggle cursor blink. Default = on']);
 commands.set(':glyphs', [glyphs, ':glyphs = Toggle custom glyphs (fixes some box-drawing glyphs). Default = on']);
 commands.set(':scrollback', [scrollback, ':scrollback [rows] = Rows of terminal history. Default = 8192']);
-// commands.set(':record', [record, ':record = Begin asciinema recording (https://asciinema.org/).']);
-// commands.set(':stop', [stop, ':stop = Stop asciinema recording and save JSON file.']);
+commands.set(':record', [record, ':record = Begin asciinema recording (share at http://terminoid.com/).']);
+commands.set(':stop', [stop, ':stop = Stop asciinema recording and save JSON file.']);
 commands.set(':save', [save, ':save = Save terminal history to history.txt']);
 commands.set(':autosave', [autosave, ':autosave = Toggle autosave. If enabled, history will be saved on connection close. Default = off']);
 commands.set(':reset', [reset_command, ':reset = Clear local storage and reset settings to default']);
@@ -93,7 +103,7 @@ function help(arg) {
     if (map_enabled) {
         update += clearMap() + writeMap();
     }
-    term.write(update);
+    wrapWrite(update);
 }
 
 function reset_command(arg) {
@@ -115,11 +125,11 @@ function fontfamily(arg) {
         term.options.fontFamily = arg;
         fitAddon.fit();
         localStorage.setItem("font", arg);
-        term.writeln('Font changed to: ' + arg + '.');
-        term.writeln('If this looks terrible, enter :reset to go back to default font.');
+        wrapWriteln('Font changed to: ' + arg + '.');
+        wrapWriteln('If this looks terrible, enter :reset to go back to default font.');
     } catch (e) {
         console.error(e);
-        term.writeln(e);
+        wrapWriteln(e);
         term.options.fontFamily = '"Fira Code", Menlo, monospace';
     }
 }
@@ -128,10 +138,10 @@ function glyphs(arg) {
     custom_glyphs = !custom_glyphs;
     term.options.customGlyphs = custom_glyphs;
     if (custom_glyphs) {
-        term.writeln('Custom glyphs are ON.');
+        wrapWriteln('Custom glyphs are ON.');
         localStorage.setItem("glyphs", "true");
     } else {
-        term.writeln('Custom glyphs are OFF.');
+        wrapWriteln('Custom glyphs are OFF.');
         localStorage.setItem("glyphs", "false");
     }
 }
@@ -146,10 +156,10 @@ function reader(arg) {
     screen_reader = !screen_reader;
     term.options.screenReaderMode = screen_reader;
     if (screen_reader) {
-        term.writeln('Screen reader is ON.');
+        wrapWriteln('Screen reader is ON.');
         localStorage.setItem("reader", "true");
     } else {
-        term.writeln('Screen reader is OFF.');
+        wrapWriteln('Screen reader is OFF.');
         localStorage.setItem("reader", "false");
     }
 }
@@ -157,17 +167,17 @@ function reader(arg) {
 function contrast(arg) {
     term.options.minimumContrastRatio = parseFloat(arg);
     localStorage.setItem("contrast", arg);
-    term.writeln('Minimum contrast ratio is: ' + arg + '.');
+    wrapWriteln('Minimum contrast ratio is: ' + arg + '.');
 }
 
 function cursorblink(arg) {
     cblink = !cblink;
     term.options.cursorBlink = cblink;
     if (cblink) {
-        term.writeln('Cursor blink is ON.');
+        wrapWriteln('Cursor blink is ON.');
         localStorage.setItem("cursorblink", "true");
     } else {
-        term.writeln('Cursor blink is OFF.');
+        wrapWriteln('Cursor blink is OFF.');
         localStorage.setItem("cursorblink", "false");
     }
 }
@@ -176,9 +186,9 @@ function cursorstyle(arg) {
     if (arg === 'block' || arg === 'underline' || arg === 'bar') {
         term.options.cursorStyle = arg;
         localStorage.setItem("cursorstyle", arg);
-        term.writeln('Cursor style is: ' + arg + '.');
+        wrapWriteln('Cursor style is: ' + arg + '.');
     } else {
-        term.writeln("Invalid cursor style! Must be block, underline, or bar.");
+        wrapWriteln("Invalid cursor style! Must be block, underline, or bar.");
     }
 }
 
@@ -186,7 +196,7 @@ function fontsize(arg) {
     term.options.fontSize = parseInt(arg);
     fitAddon.fit();
     localStorage.setItem("fontsize", arg);
-    term.writeln('Font size is: ' + arg + '.');
+    wrapWriteln('Font size is: ' + arg + '.');
 }
 
 function save(arg) {
@@ -196,69 +206,58 @@ function save(arg) {
     }
     saveBlob('history.txt', history);
     localStorage.setItem('history', history);
-    term.writeln('Terminal history saved.');
+    wrapWriteln('Terminal history saved.');
 }
 
 function autosave(arg) {
     autosave_setting = !autosave_setting;
     if (autosave_setting) {
         localStorage.setItem('autosave', 'true');
-        term.writeln('Autosave is ON.');
+        wrapWriteln('Autosave is ON.');
     } else {
         localStorage.setItem('autosave', 'false');
-        term.writeln('Autosave is OFF.');
+        wrapWriteln('Autosave is OFF.');
     }
 }
 
-// let recording_header = {
-//     "version": 2,
-//     "width": 80,
-//     "height": 24,
-//     "timestamp": 0,
-//     "duration": 0,
-//     "title": "xtermia recording"
-// };
-// let recording_start = 0;
-// let recording_buffer = '';
-//
-// function record(arg) {
-//     recording_start = Date.now();
-//     recording_header.width = term.cols;
-//     recording_header.height = term.rows;
-//     recording_header.timestamp = Math.round(recording_start / 1000);
-//     recording = true;
-// }
-//
-// function addRecord(str) {
-//     const time = (Date.now() - recording_start) / 1000;
-//     recording_buffer += JSON.stringify([time, "o", str]) + '\n';
-// }
+function record(arg) {
+    recording_start = Date.now();
+    recording_header.width = term.cols;
+    recording_header.height = term.rows;
+    recording_header.timestamp = Math.round(recording_start / 1000);
+    recording = true;
+}
 
-// function wrapWrite(d) {
-//     // wrap all term.write() calls with this to enable recording
-//     term.write(d);
-//     if (recording) {
-//         addRecord(d);
-//     }
-// }
-//
-// function wrapWriteln(d) {
-//     // wrap all term.writeln() calls with this to enable recording
-//     term.writeln(d);
-//     if (recording) {
-//         addRecord(d);
-//     }
-// }
+function addRecord(str) {
+    const time = (Date.now() - recording_start) / 1000;
+    recording_buffer += JSON.stringify([time, "o", str]) + '\n';
+}
 
-// function stop(arg) {
-//     if (recording) {
-//         recording = false;
-//         recording_header.duration = (Date.now() - recording_start) / 1000;
-//         saveBlob('recording.cast', JSON.stringify(recording_header) + '\n' + recording_buffer);
-//     } else {
-//         term.writeln("Recording hasn't begun!");
-//     }
-// }
+function wrapWrite(d, f) {
+    // wrap all term.write() calls with this to enable recording
+    term.write(d, f);
+    if (recording) {
+        addRecord(d);
+    }
+}
+
+function wrapWriteln(d, f) {
+    // wrap all term.writeln() calls with this to enable recording
+    term.writeln(d, f);
+    if (recording) {
+        addRecord(d);
+    }
+}
+
+function stop(arg) {
+    if (recording) {
+        recording = false;
+        recording_header.duration = (Date.now() - recording_start) / 1000;
+        saveBlob('recording.cast', JSON.stringify(recording_header) + '\n' + recording_buffer);
+    } else {
+        wrapWriteln("Recording hasn't begun!");
+    }
+}
 
 function handle_command(command) {
     for (const [key, value] of commands) {
@@ -331,7 +330,6 @@ term.onResize(e => {
     }
 });
 
-// let history_buffer = '';
 const max_len = 128;
 let history = [];
 let command = '';
@@ -363,7 +361,7 @@ function doPaste() {
             const end = command.substring(cursor_pos);
             const start = command.substring(0, cursor_pos);
             command = start + text + end;
-            term.write(clearBuffer() + prompt + start + text + '\x1B7' + end + '\x1B8');
+            wrapWrite(clearBuffer() + prompt + start + text + '\x1B7' + end + '\x1B8');
             cursor_pos += text.length;
             enter_pressed = false;
         })
@@ -404,7 +402,7 @@ function onDefault(e) {
     // insert characters if cursor has been moved
     if (cursor_pos !== command.length) {
         update += clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C'
-        term.write(update);
+        wrapWrite(update);
         return;
     }
     const result = getCompletion(command);
@@ -416,7 +414,7 @@ function onDefault(e) {
     } else {
         completion = '';
     }
-    term.write(update);
+    wrapWrite(update);
 }
 
 function onCommand() {
@@ -433,14 +431,14 @@ function onCommand() {
         index = history.push(command) - 1;
     }
     update += clearBuffer() + command_color + command + reset + '\n';
-    term.write(update);
+    wrapWrite(update);
     last_dir = 1;
     enter_pressed = true;
     cursor_pos = 0;
     completion = '';
     handle_command(command);
     command = '';
-    term.write(prompt);
+    wrapWrite(prompt);
 }
 
 function onEnter() {
@@ -459,7 +457,7 @@ function onEnter() {
             update += clearBuffer() + '\n';
             cursor_pos = 0;
             command = '';
-            term.write(update);
+            wrapWrite(update);
             return;
         }
         if (history.length > max_len) {
@@ -476,7 +474,7 @@ function onEnter() {
             update += '\x9B' + (lines.length - 1) + 'F';
         }
         update += clearBuffer() + command_color + command + reset + '\n';
-        term.write(update);
+        wrapWrite(update);
         last_dir = 1;
         enter_pressed = true;
         cursor_pos = 0;
@@ -489,7 +487,7 @@ function onDelete() {
     if (cursor_pos < command.length) {
         const sub = command.substring(cursor_pos + 1);
         command = command.substring(0, cursor_pos) + sub;
-        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
+        wrapWrite(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
     }
 }
 
@@ -499,9 +497,9 @@ function onBackspace() {
         if (lines.length > 1) {
             if (cursor_pos > lines[0].length) {
                 // move cursor up if necessary
-                term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+                wrapWrite('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
             } else {
-                term.write(clearBuffer() + prompt);
+                wrapWrite(clearBuffer() + prompt);
             }
             command = '';
             cursor_pos = 0;
@@ -524,14 +522,14 @@ function onBackspace() {
         } else {
             completion = '';
         }
-        term.write(update);
+        wrapWrite(update);
     }
 }
 
 function onArrowRight() {
     if (completion.length > 0 && cursor_pos === command.length) {
         command = command.concat(completion);
-        term.write(clearBuffer() + prompt + command);
+        wrapWrite(clearBuffer() + prompt + command);
         cursor_pos += completion.length;
         completion = '';
         return;
@@ -541,7 +539,7 @@ function onArrowRight() {
         cursor_pos += 1;
         completion = '';
         // rewrite the whole thing to remove highlight if necessary
-        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
+        wrapWrite(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (cursor_pos + prompt_len) + 'C');
     }
 }
 
@@ -554,9 +552,9 @@ function onArrowUp() {
     const lines = command.split('\n');
     command = history[index];
     if (lines.length > 1 && cursor_pos > lines[0].length) {
-        term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
+        wrapWrite('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
     } else {
-        term.write(clearBuffer() + prompt + command);
+        wrapWrite(clearBuffer() + prompt + command);
     }
     cursor_pos = command.length;
     last_dir = 2;
@@ -568,17 +566,17 @@ function onArrowDown() {
         index += 1;
         command = history[index];
         if (lines.length > 1 && cursor_pos > lines[0].length) {
-            term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
+            wrapWrite('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt + command);
         } else {
-            term.write(clearBuffer() + prompt + command);
+            wrapWrite(clearBuffer() + prompt + command);
         }
         cursor_pos = command.length;
         last_dir = 1;
     } else if (cursor_pos !== 0) { // we're at the bottom of history, clear it
         if (lines.length > 1 && cursor_pos > lines[0].length) {
-            term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+            wrapWrite('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
         } else {
-            term.write(clearBuffer() + prompt);
+            wrapWrite(clearBuffer() + prompt);
         }
         command = '';
         completion = '';
@@ -593,15 +591,15 @@ function onArrowLeft() {
         if (lines.length > 1) {
             if (cursor_pos > lines[0].length) {
                 // move cursor up first if necessary
-                term.write('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
+                wrapWrite('\x9B' + (lines.length - 1) + 'F' + clearBuffer() + prompt);
             } else {
-                term.write(clearBuffer() + prompt);
+                wrapWrite(clearBuffer() + prompt);
             }
             cursor_pos = 0;
             command = '';
         } else {
             cursor_pos -= 1;
-            term.write('\x9B1D');
+            wrapWrite('\x9B1D');
         }
     }
 }
@@ -609,7 +607,7 @@ function onArrowLeft() {
 function onHome() {
     if (cursor_pos > 0) {
         cursor_pos = 0;
-        term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + prompt_len + 'C');
+        wrapWrite(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + prompt_len + 'C');
     }
 }
 
@@ -618,10 +616,10 @@ function onEnd() {
         const lines = command.split('\n');
         if (lines.length > 0) {
             // for multi-line commands, go to end of first line.  proper multi-line editing might be added later...
-            term.write(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (prompt_len + lines[0].length) + 'C');
+            wrapWrite(clearBuffer() + prompt + '\x1B7' + command + '\x1B8\r\x9B' + (prompt_len + lines[0].length) + 'C');
             cursor_pos = lines[0].length;
         } else {
-            term.write(clearBuffer() + prompt + command);
+            wrapWrite(clearBuffer() + prompt + command);
             cursor_pos = command.length;
         }
     }
@@ -707,7 +705,7 @@ function onKey(e) {
     }
     if (enter_pressed && e.key !== 'Enter') {  // clear the command
         enter_pressed = false;
-        term.write(clearBuffer() + prompt);
+        wrapWrite(clearBuffer() + prompt);
         command = '';
         cursor_pos = 0;
     }
@@ -741,7 +739,7 @@ function onData(d) {
             const end = command.substring(cursor_pos);
             const start = command.substring(0, cursor_pos);
             command = start + d + end;
-            term.write(clearBuffer() + prompt + start + d + '\x1B7' + end + '\x1B8');
+            wrapWrite(clearBuffer() + prompt + start + d + '\x1B7' + end + '\x1B8');
             cursor_pos += d.length;
             enter_pressed = false;
         }
@@ -807,7 +805,7 @@ function writeSelf(d) {
     if (interactive_mode) {
         self_write = true;
     }
-    term.write(d);
+    wrapWrite(d);
 }
 
 function cursorHome() {
@@ -911,12 +909,12 @@ term.attachCustomKeyEventHandler(e => onKey(e));
 term.open(el_terminal);
 fitAddon.fit();
 ws.onopen = function () {
-    term.write('\n======== Connected.\n');
+    wrapWrite('\n======== Connected.\n');
     ws_ready = true;
     ws.send(JSON.stringify(['term_size', [term.cols, term.rows], {}]));
 };
 ws.onclose = function () {
-    term.write('\n======== Connection lost.\n');
+    wrapWrite('\n======== Connection lost.\n');
     ws_ready = false;
     if (autosave_setting) {
         save();
@@ -935,13 +933,13 @@ function onText(input) {
     update += prompt;
     if (command.length > 0 && completion.length === 0) {
         update += '\x1B7' + highlight + command + reset + '\x1B8';
-        term.write(update);
+        wrapWrite(update);
         return;
     } else if (completion.length > 0) {
         update += highlight + command + reset;
         update += grey + completion + reset + '\x9B' + completion.length + 'D';
     }
-    term.write(update);
+    wrapWrite(update);
 }
 
 function onClearLine(line) {
@@ -961,8 +959,9 @@ function onClearLine(line) {
     update += cursorHome();
     writeSelf(update);
 }
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
-ws.onmessage = function (e) {
+async function onMessage(e) {
     let msg = JSON.parse(e.data);
     switch (msg[0]) {
         case 'text':
@@ -1045,11 +1044,11 @@ ws.onmessage = function (e) {
             interactive_mode = true;
             cursor_x = 0;
             cursor_y = 0;
-            term.write('\x1B7'); // save cursor
+            wrapWrite('\x1B7'); // save cursor
             break;
         case 'interactive_end':
             interactive_mode = false;
-            term.write('\x1B8'); // restore cursor
+            wrapWrite('\x1B8'); // restore cursor
             break;
         case 'player_commands':
             player_commands.push(...msg[1]);
@@ -1084,16 +1083,32 @@ ws.onmessage = function (e) {
                         map_width = stripped[i].length;
                     }
                 }
-                term.write(clearMap() + writeMap());
+                wrapWrite(clearMap() + writeMap());
             }
+        case 'buffer':
+            // this is for writing buffers with flow control
+            // this command expects an array of strings to write sequentially to the terminal
+            let x = 0;
+            async function next() {
+                x += 1;
+                if (x >= msg[1].length) {
+                    wrapWrite(reset + '\x1B[?25h\n');
+                } else {
+                    // slow down buffer playback if necessary
+                    //await sleep(0);
+                    wrapWrite(msg[1][x], next);
+                }
+            }
+            wrapWrite(msg[1][x], next)
             break;
         default:
             console.log('Unknown command: ' + msg);
     }
 }
+ws.addEventListener("message", e => onMessage(e));
 ws.onerror = function (e) {
     console.log(e);
-    term.write('\n======== Connection error: ' + e + '\n');
+    wrapWrite('\n======== Connection error: ' + e + '\n');
 };
 term.focus();
 window.addEventListener('focus', (e) => {
@@ -1105,9 +1120,9 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('resize', function (e) {
     // clear map before resize
     if (map_enabled) {
-        term.write(clearMap(), () => {
+        wrapWrite(clearMap(), () => {
             fitAddon.fit();
-            term.write(writeMap());
+            wrapWrite(writeMap());
         });
     } else {
         fitAddon.fit();
