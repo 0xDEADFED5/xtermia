@@ -1,4 +1,4 @@
-const revision = 108;
+const revision = 109;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -1085,6 +1085,7 @@ async function onMessage(e) {
                 }
                 wrapWrite(clearMap() + writeMap());
             }
+			break;
         case 'buffer':
             // this is for writing buffers with flow control
             // this command expects an array of strings to write sequentially to the terminal
