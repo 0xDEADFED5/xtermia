@@ -220,11 +220,10 @@ class CmdMapTest(Command):
         the map will redrawn in the webclient when it's updated.
         how maps currently work:
             maps are centered horizontally and vertically within the right half of the terminal
-            maps at maximum height will always start drawing 1 row below the top terminal row
-            this is so the webclient doesn't have to scroll up to remove previous map frame (which results in better experience)
-            maps taller than the terminal will be chopped off at the bottom
-            the alternative would be adding blank lines to Evennia's text output in the left pane in order to add room for taller maps,
-            but I think that sounds kind of terrible so I haven't implemented it """
+            webclient will now autoscroll maps that are too large to display
+            this requires webclient to know player relative position so it knows which map
+            section to draw, see examples below
+    """
     key = 'maptest'
     help_category = 'Examples'
     
@@ -305,7 +304,12 @@ class CmdMapTest(Command):
         max_width = data[0]
         max_height = data[1]
         map_pattern = CmdMapTest.make_pattern(max_width, max_height, True, 0.0, False)
-        caller.msg(map=map_pattern)  # set map to test pattern above
+        # set map to test pattern above
+        # NOTE: new signature for map command
+        # webclient will now scroll the map if it's too big, but to know where to
+        # scroll it, it needs to know player position.  however, if you're sure
+        # that map doesn't need to be scrolled, you can always send (0,0) as 'pos'
+        caller.msg(map={'map':map_pattern, 'pos':(0,0)})
         sessions = caller.sessions.get()
         flags = sessions[0].protocol_flags
         width = flags.get('SCREENWIDTH')[0]

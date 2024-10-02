@@ -1,4 +1,4 @@
-const revision = 109;
+const revision = 110;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -309,7 +309,10 @@ let map_max_width = 0;
 
 function calcMapSize(term_columns) {
     map_column = Math.ceil(term_columns / 2) + 1;
-    map_max_width = term_columns - map_column;
+    map_max_width = term_columns - map_column - 1;
+    if (map_width > map_max_width || map_height > term.rows) {
+        resizeMap(pos);
+    }
 }
 
 function setMapSize(term_columns) {
@@ -345,7 +348,8 @@ let self_paste = false; // did we send the paste? or is the right-click menu bei
 let self_write = false; // if true, don't do onData events
 let enter_pressed = false;
 let censor_input = true; // until login, don't echo input commands so that password isn't leaked
-let map = '';
+let map = [];  // current map, split into lines
+let pos = [];  // last position sent for map
 let map_width = 0;
 let map_height = 0;
 const ansi_color_regex = /\x1B\[[0-9;]+m/g
@@ -473,7 +477,7 @@ function onEnter() {
         if (lines.length > 1 && cursor_pos > lines[0].length) {
             update += '\x9B' + (lines.length - 1) + 'F';
         }
-        update += clearBuffer() + command_color + command + reset + '\n';
+        update += clearBuffer() + command_color + command + reset;
         wrapWrite(update);
         last_dir = 1;
         enter_pressed = true;
@@ -831,11 +835,7 @@ function clearMap() {
     update += '\x1B7';  // save cursor
     for (let i = 0; i < term.rows; i++) {
         // move cursor, clear to end
-        update += '\x9B';
-        update += (i + 1);
-        update += ';';
-        update += (map_column + 1);
-        update += 'H\x1B[0K';
+        update += '\x9B' + (i + 1) + ';' + (map_column + 1) + 'H\x1B[0K';
     }
     update += '\x1B8';  // restore cursor
     return update;
@@ -855,13 +855,7 @@ function writeMap() {
         pre_pad = ' '.repeat(pre_pad_len);
     }
     for (let i = 0; i < map.length; i++) {
-        update += '\x9B';
-        update += (i + y);
-        update += ';';
-        update += (map_column + 1);
-        update += 'H';
-        update += pre_pad;
-        update += map[i];
+        update += '\x9B' + (i + y) + ';' + (map_column + 1) + 'H' + pre_pad + map[i];
     }
     update += '\x1B8';  // restore cursor
     return update;
@@ -921,6 +915,131 @@ ws.onclose = function () {
     }
 };
 
+function trimANSIstart(input, len) {
+    // trim len chars from start of ANSI string
+    let trim_start = 0;
+    let is_ansi = false;
+    for (let i = 0; i < input.length; i++) {
+        if (len === 0) {
+            break;
+        }
+        if (is_ansi) {
+            if (input[i] === 'm' || input[i] === 'K') {
+                is_ansi = false;
+            }
+        } else {
+            if (input[i] === '\x1b') {
+                is_ansi = true;
+            } else {
+                trim_start = i + 1;
+                len--;
+            }
+        }
+    }
+    return input.substring(trim_start);
+}
+
+function trimANSI(input, maxlen) {
+    // trim ANSI string to maxlen while ignoring control codes
+    let trim_end = 0;
+    let len = 0;
+    let is_ansi = false;
+    for (let i = 0; i < input.length; i++) {
+        if (len === maxlen) {
+            break;
+        }
+        if (is_ansi) {
+            if (input[i] === 'm' || input[i] === 'K') {
+                is_ansi = false;
+            }
+        } else {
+            if (input[i] === '\x1b') {
+                is_ansi = true;
+            } else {
+                trim_end = i + 1;
+                len++;
+            }
+        }
+    }
+    return input.substring(0, trim_end);
+}
+
+function ANSIsubstring(input, start, end) {
+    // get substring of ANSI string while ignoring control codes
+    // start and end are inclusive
+    let pos = 0;
+    let start_pos = 0;
+    let end_pos = 0;
+    let is_ansi = false;
+    for (let i = 0; i < input.length; i++) {
+        if (pos === end) {
+            break;
+        }
+        if (is_ansi) {
+            if (input[i] === 'm' || input[i] === 'K') {
+                is_ansi = false;
+            }
+        } else {
+            if (input[i] === '\x1b') {
+                is_ansi = true;
+            } else {
+                if (pos < start) {
+                    start_pos = i + 1;
+                }
+                if (pos < end) {
+                    end_pos = i + 2;
+                }
+                pos++;
+            }
+        }
+    }
+    if (start_pos <= end_pos) {
+        return input.substring(start_pos, end_pos);
+    }
+    return '';
+}
+
+function resizeMap(pos) {
+    // resize map if it's too big...supports color
+    // pos = [x,y] coordinate that should be visible
+    const x = Math.min(Math.max(pos[0], 0), map_width)
+    const y = Math.min(Math.max(pos[1], 0), map_height)
+    let xstart = 0, xend = 0, ystart = 0, yend = 0;
+    if (map_width - map_max_width > 0) {
+        const lil_half = Math.floor(map_max_width / 2);
+        const half_diff = map_max_width - (lil_half * 2);
+        if (x <= lil_half + half_diff) {
+            xstart = Math.max(x - lil_half, 0);
+            xend = Math.min(xstart + map_max_width - 1, map_width - 1);
+        } else {
+            xend = Math.min(x + lil_half, map_width);
+            xstart = Math.max(xend - map_max_width, 0);
+        }
+        for (let i = 0; i < map.length; i++) {
+            map[i] = ANSIsubstring(map[i], xstart, xend)
+        }
+    }
+    if (map_height - map_max_height > 0) {
+        const half = Math.floor(map_max_height / 2);
+        if (y < half) {
+            ystart = Math.max(y - half, 0);
+            yend = Math.min(ystart + map_max_height - 1, map_height - 1);
+        } else {
+            yend = Math.min(y + half, map_height);
+            ystart = Math.max(yend - map_max_height, 0);
+        }
+        let new_map = Array(map_max_height);
+        let index = map_max_height - 1;
+        for (let i = map.length - 1 - ystart; index > -1; i--) {
+            new_map[index] = map[i];
+            index--;
+        }
+        map = new_map;
+    }
+    map_width = map_max_width;
+    map_height = map_max_height;
+}
+
 function onText(input) {
     let update = '';
     update += clearBuffer();
@@ -959,6 +1078,7 @@ function onClearLine(line) {
     update += cursorHome();
     writeSelf(update);
 }
+
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
 async function onMessage(e) {
@@ -1072,9 +1192,11 @@ async function onMessage(e) {
             break;
         case 'map':
             if (map_enabled) {
-                map = msg[1].split(/\r?\n/);
+                // map = msg[1].split(/\r?\n/);
+                map = msg[2].map.split(/\r?\n/);
+                pos = msg[2].pos
                 // strip ANSI before checking width
-                const stripped = msg[1].replace(ansi_color_regex, '').split(/\r?\n/);
+                const stripped = msg[2].map.replace(ansi_color_regex, '').split(/\r?\n/);
                 // figure out map width so it can be centered
                 map_width = 0;
                 map_height = map.length;
@@ -1083,29 +1205,35 @@ async function onMessage(e) {
                         map_width = stripped[i].length;
                     }
                 }
+                if (map_width > map_max_width || map_height > term.rows) {
+                    resizeMap(pos);
+                }
                 wrapWrite(clearMap() + writeMap());
             }
-			break;
+            break;
         case 'buffer':
             // this is for writing buffers with flow control
             // this command expects an array of strings to write sequentially to the terminal
             let x = 0;
-            async function next() {
-                x += 1;
-                if (x >= msg[1].length) {
-                    wrapWrite(reset + '\x1B[?25h\n');
-                } else {
-                    // slow down buffer playback if necessary
-                    //await sleep(0);
-                    wrapWrite(msg[1][x], next);
-                }
+
+        async function next() {
+            x += 1;
+            if (x >= msg[1].length) {
+                wrapWrite(reset + '\x1B[?25h\n');
+            } else {
+                // slow down buffer playback if necessary
+                //await sleep(0);
+                wrapWrite(msg[1][x], next);
             }
+        }
+
             wrapWrite(msg[1][x], next)
             break;
         default:
             console.log('Unknown command: ' + msg);
     }
 }
+
 ws.addEventListener("message", e => onMessage(e));
 ws.onerror = function (e) {
     console.log(e);

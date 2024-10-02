@@ -16,8 +16,9 @@ from commands.examples import TEMPLATE
 
 
 class Character(ObjectParent, DefaultCharacter, DefaultObject):
-    _callbacks = {}
-
+    def at_init(self):
+        self._callbacks = {}
+        return super().at_init()
     def add_callback(self, key: str, func: Callable[[list, dict], None], *user):
         """
         basic non-persistent callbacks
@@ -76,5 +77,5 @@ class Character(ObjectParent, DefaultCharacter, DefaultObject):
         map_enabled = self.db.map_enabled
         if map_enabled is True:
             self.msg(map_enable="")
-            self.msg(map=TEMPLATE.format(label="Example!", instructions=''))
+            self.msg(map={'map':TEMPLATE.format(label="Example!", instructions=''), 'pos':(0,0)})
         super().at_post_puppet(**kwargs)

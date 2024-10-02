@@ -321,8 +321,13 @@ class WebSocketClient(WebSocketServerProtocol, _BASE_SESSION_CLASS):
         """
         match cmdname:
             case 'map':
-                text = parse_ansi(args[0], strip_ansi=False, xterm256=True, mxp=False, truecolor=True)
-                self.sendLine(json.dumps([cmdname, text, kwargs]))
+                m = kwargs.get('map', None)
+                if m:
+                    parsed = parse_ansi(m, strip_ansi=False, xterm256=True, mxp=False, truecolor=True)
+                    kwargs['map'] = parsed
+                    self.sendLine(json.dumps([cmdname, args, kwargs]))
+                else:
+                    self.sendLine(json.dumps([cmdname, args, kwargs]))
             case 'options':
                 pass
             case _:
