@@ -1,4 +1,4 @@
-const revision = 110;
+const revision = 112;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -966,7 +966,6 @@ function trimANSI(input, maxlen) {
 
 function ANSIsubstring(input, start, end) {
     // get substring of ANSI string while ignoring control codes
-    // start and end are inclusive
     let pos = 0;
     let start_pos = 0;
     let end_pos = 0;
@@ -1019,17 +1018,17 @@ function resizeMap(pos) {
             map[i] = ANSIsubstring(map[i], xstart, xend)
         }
     }
-    if (map_height - map_max_height > 0) {
-        const half = Math.floor(map_max_height / 2);
+    if (map_height - term.rows > 0) {
+        const half = Math.floor(term.rows / 2);
         if (y < half) {
             ystart = Math.max(y - half, 0);
-            yend = Math.min(ystart + map_max_height - 1, map_height - 1);
+            yend = Math.min(ystart + term.rows - 1, map_height - 1);
         } else {
             yend = Math.min(y + half, map_height);
-            ystart = Math.max(yend - map_max_height, 0);
+            ystart = Math.max(yend - term.rows, 0);
         }
-        let new_map = Array(map_max_height);
-        let index = map_max_height - 1;
+        let new_map = Array(term.rows);
+        let index = term.rows - 1;
         for (let i = map.length - 1 - ystart; index > -1; i--) {
             new_map[index] = map[i];
             index--;
@@ -1037,7 +1036,7 @@ function resizeMap(pos) {
         map = new_map;
     }
     map_width = map_max_width;
-    map_height = map_max_height;
+    map_height = term.rows;
 }
 
 function onText(input) {
@@ -1215,18 +1214,16 @@ async function onMessage(e) {
             // this is for writing buffers with flow control
             // this command expects an array of strings to write sequentially to the terminal
             let x = 0;
-
-        async function next() {
-            x += 1;
-            if (x >= msg[1].length) {
-                wrapWrite(reset + '\x1B[?25h\n');
-            } else {
-                // slow down buffer playback if necessary
-                //await sleep(0);
-                wrapWrite(msg[1][x], next);
+            async function next() {
+                x += 1;
+                if (x >= msg[1].length) {
+                    wrapWrite(reset + '\x1B[?25h\n');
+                } else {
+                    // slow down buffer playback if necessary
+                    //await sleep(0);
+                    wrapWrite(msg[1][x], next);
+                }
             }
-        }
-
             wrapWrite(msg[1][x], next)
             break;
         default:
