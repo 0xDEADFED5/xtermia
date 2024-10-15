@@ -1,4 +1,4 @@
-const revision = 113;
+const revision = 114;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -1218,13 +1218,13 @@ async function onMessage(e) {
                 const stripped = msg[2].map.replace(ansi_color_regex, '').split(/\r?\n/);
                 // figure out map width so it can be centered
                 map_width = 0;
-                map_height = map.length + legend.length;
+                map_height = map.length;
                 for (let i = 0; i < stripped.length; i++) {
                     if (stripped[i].length > map_width) {
                         map_width = stripped[i].length;
                     }
                 }
-                if (map_width > map_max_width || map_height > term.rows) {
+                if (map_width > map_max_width || (map_height + legend.length) > term.rows) {
                     resizeMap(pos);
                 }
                 wrapWrite(clearMap() + writeMap());
