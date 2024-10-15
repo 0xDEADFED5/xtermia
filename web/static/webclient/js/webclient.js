@@ -1,4 +1,4 @@
-const revision = 112;
+const revision = 113;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -325,6 +325,7 @@ term.onResize(e => {
     if (ws_ready) {
         if (map_enabled) {
             // reserve half the terminal width for map
+            term.write('\x1B[2J');
             setMapSize(e.cols);
             ws.send(JSON.stringify(['map_size', [map_max_width, term.rows - 1], {}]));
         } else {
@@ -350,6 +351,7 @@ let enter_pressed = false;
 let censor_input = true; // until login, don't echo input commands so that password isn't leaked
 let map = [];  // current map, split into lines
 let pos = [];  // last position sent for map
+let legend = [];  // current map legend, split into lines
 let map_width = 0;
 let map_height = 0;
 const ansi_color_regex = /\x1B\[[0-9;]+m/g
@@ -843,19 +845,30 @@ function clearMap() {
 
 function writeMap() {
     let update = '';
-    let y = 2; // for centering vertically
+    let y = 1; // for centering vertically
     update += '\x1B7';  // save cursor
     let pre_pad = '';  // for centering horizontally
-    let pad_height = Math.floor((term.rows - 2 - map_height) / 2);
+    let pad_height = Math.floor((term.rows - legend.length - map_height - 1) / 2);
     if (pad_height > 0) {
         y += pad_height;
     }
-    const pre_pad_len = Math.floor((term.cols - map_column - map_width) / 2);
+    let pre_pad_len = Math.floor((map_max_width - map_width) / 2);
     if (pre_pad_len > 0) {
         pre_pad = ' '.repeat(pre_pad_len);
     }
     for (let i = 0; i < map.length; i++) {
         update += '\x9B' + (i + y) + ';' + (map_column + 1) + 'H' + pre_pad + map[i];
+    }
+    if (legend.length > 0) {
+        y += map.length;
+        pre_pad_len = Math.floor((map_max_width - legend[legend.length - 1].length) / 2);
+        pre_pad = '';
+        if (pre_pad_len > 0) {
+            pre_pad = ' '.repeat(pre_pad_len);  // center legend separately
+        }
+        for (let i = 0; i < legend.length; i++) {
+            update += '\x9B' + (i + y) + ';' + (map_column + 1) + 'H' + pre_pad + legend[i];
+        }
     }
     update += '\x1B8';  // restore cursor
     return update;
@@ -1002,7 +1015,7 @@ function resizeMap(pos) {
     // resize map if it's too big...supports color
     // pos = [x,y] coordinate that should be visible
     const x = Math.min(Math.max(pos[0], 0), map_width)
-    const y = Math.min(Math.max(pos[1], 0), map_height)
+    let y = Math.min(Math.max(pos[1], 0), map_height)
     let xstart = 0, xend = 0, ystart = 0, yend = 0;
     if (map_width - map_max_width > 0) {
         const lil_half = Math.floor(map_max_width / 2);
@@ -1017,26 +1030,32 @@ function resizeMap(pos) {
         for (let i = 0; i < map.length; i++) {
             map[i] = ANSIsubstring(map[i], xstart, xend)
         }
+        map_width = map_max_width;
     }
-    if (map_height - term.rows > 0) {
-        const half = Math.floor(term.rows / 2);
-        if (y < half) {
-            ystart = Math.max(y - half, 0);
-            yend = Math.min(ystart + term.rows - 1, map_height - 1);
-        } else {
-            yend = Math.min(y + half, map_height);
-            ystart = Math.max(yend - term.rows, 0);
+    if ((map_height + legend.length) - term.rows > 0) {
+        const max_height = term.rows - legend.length;
+        const half_max = Math.floor(max_height / 2);
+        y = map.length - y;
+        let start = Math.max(y - half_max, 0);
+        let end = Math.min(y + half_max, map.length);
+        if (end - start < max_height) {
+            let diff = max_height - (end - start);
+            if (start > 0) {
+                if (start >= diff) {
+                    start -= diff;
+                    diff = 0;
+                } else {
+                    start = 0;
+                    diff -= start;
+                }
+            }
+            if (diff > 0 && end < map.length) {
+                end = Math.min(end + diff, map.length);
+            }
         }
-        let new_map = Array(term.rows);
-        let index = term.rows - 1;
-        for (let i = map.length - 1 - ystart; index > -1; i--) {
-            new_map[index] = map[i];
-            index--;
-        }
-        map = new_map;
+        map = map.slice(start, end);
+        map_height = term.rows;
     }
-    map_width = map_max_width;
-    map_height = term.rows;
 }
 
 function onText(input) {
@@ -1194,11 +1213,12 @@ async function onMessage(e) {
                 // map = msg[1].split(/\r?\n/);
                 map = msg[2].map.split(/\r?\n/);
                 pos = msg[2].pos
+                legend = msg[2].legend.split(/\r?\n/);
                 // strip ANSI before checking width
                 const stripped = msg[2].map.replace(ansi_color_regex, '').split(/\r?\n/);
                 // figure out map width so it can be centered
                 map_width = 0;
-                map_height = map.length;
+                map_height = map.length + legend.length;
                 for (let i = 0; i < stripped.length; i++) {
                     if (stripped[i].length > map_width) {
                         map_width = stripped[i].length;

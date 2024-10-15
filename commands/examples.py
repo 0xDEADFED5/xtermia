@@ -309,7 +309,7 @@ class CmdMapTest(Command):
         # webclient will now scroll the map if it's too big, but to know where to
         # scroll it, it needs to know player position.  however, if you're sure
         # that map doesn't need to be scrolled, you can always send (0,0) as 'pos'
-        caller.msg(map={'map':map_pattern, 'pos':(0,0)})
+        caller.msg(map={'map':map_pattern, 'pos':(0,0), 'legend':''})
         sessions = caller.sessions.get()
         flags = sessions[0].protocol_flags
         width = flags.get('SCREENWIDTH')[0]
