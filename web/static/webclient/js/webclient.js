@@ -1,4 +1,4 @@
-const revision = 114;
+const revision = 115;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -479,7 +479,11 @@ function onEnter() {
         if (lines.length > 1 && cursor_pos > lines[0].length) {
             update += '\x9B' + (lines.length - 1) + 'F';
         }
-        update += clearBuffer() + command_color + command + reset;
+        if (map_enabled) {
+            update += clearMap() + clearBuffer() + command_color + command + reset + '\n' + writeMap();
+        }else {
+            update += clearBuffer() + command_color + command + reset + '\n';
+        }
         wrapWrite(update);
         last_dir = 1;
         enter_pressed = true;
@@ -843,9 +847,11 @@ function clearMap() {
     return update;
 }
 
+
+
 function writeMap() {
     let update = '';
-    let y = 1; // for centering vertically
+    let y = 2; // for centering vertically
     update += '\x1B7';  // save cursor
     let pre_pad = '';  // for centering horizontally
     let pad_height = Math.floor((term.rows - legend.length - map_height - 1) / 2);
@@ -1033,7 +1039,7 @@ function resizeMap(pos) {
         map_width = map_max_width;
     }
     if ((map_height + legend.length) - term.rows > 0) {
-        const max_height = term.rows - legend.length;
+        const max_height = term.rows - legend.length - 1;
         const half_max = Math.floor(max_height / 2);
         y = map.length - y;
         let start = Math.max(y - half_max, 0);
@@ -1062,8 +1068,7 @@ function onText(input) {
     let update = '';
     update += clearBuffer();
     if (map_enabled) {
-        update += wrap(input) + reset;
-        update += clearMap() + writeMap();
+        update += clearMap() + wrap(input) + reset + writeMap();
     } else {
         update += input + reset;
     }
