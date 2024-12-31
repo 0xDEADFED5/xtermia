@@ -1,4 +1,4 @@
-const revision = 115;
+const revision = 117;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
@@ -359,6 +359,9 @@ const grey = '\x1B[38;5;243m';
 const reset = '\x1B[0m';
 const command_color = '\x1B[38;5;220m';
 const highlight = '\x1B[48;5;24m';
+const default_color = '\x1B[38;2;190;190;190m';
+const default_color_reset = '\x1B[0m\x1B[38;2;190;190;190m';
+const white = '\x1B[37m';
 let cursor_pos = 0;
 
 function doPaste() {
@@ -481,7 +484,7 @@ function onEnter() {
         }
         if (map_enabled) {
             update += clearMap() + clearBuffer() + command_color + command + reset + '\n' + writeMap();
-        }else {
+        } else {
             update += clearBuffer() + command_color + command + reset + '\n';
         }
         wrapWrite(update);
@@ -848,7 +851,6 @@ function clearMap() {
 }
 
 
-
 function writeMap() {
     let update = '';
     let y = 2; // for centering vertically
@@ -1066,6 +1068,11 @@ function resizeMap(pos) {
 
 function onText(input) {
     let update = '';
+    if (input.charAt(0) !== '\x1B') {
+        input = default_color + input;
+    }
+    input = input.replaceAll(reset, default_color_reset);
+    input = input.replaceAll(white, default_color);
     update += clearBuffer();
     if (map_enabled) {
         update += clearMap() + wrap(input) + reset + writeMap();
@@ -1215,7 +1222,10 @@ async function onMessage(e) {
             break;
         case 'map':
             if (map_enabled) {
-                // map = msg[1].split(/\r?\n/);
+                // msg[2].map = msg[2].map.replaceAll(reset, default_color_reset);
+                // msg[2].map = msg[2].map.replaceAll(white, default_color);
+                msg[2].legend = msg[2].legend.replaceAll(reset, default_color_reset);
+                msg[2].legend = msg[2].legend.replaceAll(white, default_color);
                 map = msg[2].map.split(/\r?\n/);
                 pos = msg[2].pos
                 legend = msg[2].legend.split(/\r?\n/);
@@ -1239,16 +1249,18 @@ async function onMessage(e) {
             // this is for writing buffers with flow control
             // this command expects an array of strings to write sequentially to the terminal
             let x = 0;
-            async function next() {
-                x += 1;
-                if (x >= msg[1].length) {
-                    wrapWrite(reset + '\x1B[?25h\n');
-                } else {
-                    // slow down buffer playback if necessary
-                    //await sleep(0);
-                    wrapWrite(msg[1][x], next);
-                }
+
+        async function next() {
+            x += 1;
+            if (x >= msg[1].length) {
+                wrapWrite(reset + '\x1B[?25h\n');
+            } else {
+                // slow down buffer playback if necessary
+                //await sleep(0);
+                wrapWrite(msg[1][x], next);
             }
+        }
+
             wrapWrite(msg[1][x], next)
             break;
         default:
