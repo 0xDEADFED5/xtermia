@@ -30,6 +30,12 @@
     <link rel="stylesheet" type="text/css" href="{% static "webclient/fonts/FiraCode.css" %}?{{client_css_version}}">
     <link rel="stylesheet" type="text/css" href="{% static "webclient/css/xterm.css" %}?{{client_css_version}}">
 {#    <link rel="stylesheet" type="text/css" href="{% static "webclient/css/normalize.css" %}?{{client_css_version}}">#}
+      <link
+              rel="preload"
+              href="../static/webclient/fonts/FiraCode-VariableFont_wght.ttf"
+              as="font"
+              type="font/ttf"
+              crossorigin />
     <script language="javascript" type="text/javascript">
         {% if websocket_enabled %}
             const wsactive = true;
@@ -52,6 +58,7 @@
     <script src="{% static "webclient/js/addon-unicode11.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
     <script src="{% static "webclient/js/addon-webgl.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
     <script src="{% static "webclient/js/addon-web-links.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
+    <script src="{% static "webclient/js/fontfaceobserver.js" %}?{{client_js_version}}" language="javascript" type="text/javascript" charset="utf-8"></script>
   </head>
 <body>
     <div id="terminal" class="container"></div>
