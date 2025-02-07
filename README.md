@@ -47,10 +47,11 @@ Look at [characters.py](/typeclasses/characters.py) for command completion and m
 
 ### File sources
 - Uses "CACHE BUSTERRRR" from https://github.com/InspectorCaracal/evelite-client/tree/main
-- addon-fit.js = npm install @xterm/addon-fit
-- addon-unicode11.js = npm install @xterm/addon-unicode11
-- addon-webgl.js = npm install @xterm/addon-webgl
+- addon-fit.js = npm install @xterm/addon-fit@beta
+- addon-unicode11.js = npm install @xterm/addon-unicode11@beta
+- addon-webgl.js = npm install @xterm/addon-webgl@beta
 - FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
 - webclient.py = https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py
-- xterm.css = npm install @xterm/xterm
+- xterm.css = npm install @xterm/xterm@beta
 - xterm.js = ""
+- fontfaceobserver.js = https://github.com/bramstein/fontfaceobserver/blob/master/fontfaceobserver.js

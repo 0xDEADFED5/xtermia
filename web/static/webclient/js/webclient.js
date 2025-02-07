@@ -1,4 +1,10 @@
-const revision = 117;
+const font = new FontFaceObserver('Fira Code');
+font.load().then(() => {
+    console.log('Font loaded.');
+}).catch(() => {
+    console.error('Font loading failed!');
+});
+const revision = 118;
 // try to get options from localstorage, otherwise set the defaults
 let fsize = localStorage.getItem('fontsize');
 if (fsize === null) {
