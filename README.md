@@ -2,7 +2,7 @@
 This replaces the webclient of an [Evennia](https://github.com/evennia/evennia/tree/main) game with the [xterm.js](https://github.com/xtermjs/xterm.js) terminal emulator.
 This is a demo that you can copy over a freshly initialized Evennia game.
 
-![screenshot](./term.png)
+![screenshot](./term2.png)
 
 ### Features
 - No more input box, type directly into the terminal like it's 1984
