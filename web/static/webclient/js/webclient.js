@@ -1,4 +1,4 @@
-const revision = 124;
+const revision = 125;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -203,12 +203,11 @@ font.load().then(() => {
     }
 
     function save(arg) {
-        history = '';
+        let h = '';
         for (let i = 0; i < term.buffer.active.length; i++) {
-            history += term.buffer.active.getLine(i).translateToString() + '\n';
+            h += term.buffer.active.getLine(i).translateToString() + '\n';
         }
-        saveBlob('history.txt', history);
-        localStorage.setItem('history', history);
+        saveBlob('history.txt', h);
         wrapWriteln('Terminal history saved.');
     }
 
