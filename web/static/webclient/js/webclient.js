@@ -1,4 +1,4 @@
-const revision = 119;
+const revision = 124;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -994,6 +994,7 @@ font.load().then(() => {
         let start_pos = 0;
         let end_pos = 0;
         let is_ansi = false;
+        let ansi_seen = false;
         for (let i = 0; i < input.length; i++) {
             if (pos === end) {
                 break;
@@ -1005,6 +1006,7 @@ font.load().then(() => {
             } else {
                 if (input[i] === '\x1b') {
                     is_ansi = true;
+                    ansi_seen = true;
                 } else {
                     if (pos < start) {
                         start_pos = i + 1;
@@ -1017,7 +1019,12 @@ font.load().then(() => {
             }
         }
         if (start_pos <= end_pos) {
-            return input.substring(start_pos, end_pos);
+            if (ansi_seen) {
+                // append ansi reset in case we chop an ANSI string
+                return input.substring(start_pos, end_pos) + reset;
+            } else {
+                return input.substring(start_pos, end_pos);
+            }
         }
         return '';
     }
