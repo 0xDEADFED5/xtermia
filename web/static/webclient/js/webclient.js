@@ -1,4 +1,4 @@
-const revision = 126;
+const revision = 127;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -72,7 +72,8 @@ font.load().then(() => {
         "duration": 0,
         "title": "xtermia recording"
     };
-    wrapWrite('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js) revision \x1b[1;97m' + revision + '\x1b[0m\n');
+    wrapWrite('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js)\n');
+    wrapWrite('revision \x1b[1;97m' + revision + '\x1b[0m\n');
     wrapWrite('Enter :help for a list of \x1b[1;97mxtermia\x1b[0m commands')
     let player_commands = [];
     const commands = new Map();
@@ -910,7 +911,9 @@ font.load().then(() => {
                         if (len === width) {
                             output += '\n';
                             len = 0;
-                            input[i] = input[i].trimStart();
+                            while (input[i] === ' ') { // remove leading spaces
+                                i += 1;
+                            }
                         }
                         output += input[i];
                         len += 1;
