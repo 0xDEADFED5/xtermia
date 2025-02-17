@@ -1,4 +1,4 @@
-const revision = 125;
+const revision = 126;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -910,6 +910,7 @@ font.load().then(() => {
                         if (len === width) {
                             output += '\n';
                             len = 0;
+                            input[i] = input[i].trimStart();
                         }
                         output += input[i];
                         len += 1;
