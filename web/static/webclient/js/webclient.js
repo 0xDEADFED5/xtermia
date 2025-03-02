@@ -1,4 +1,4 @@
-const revision = 127;
+const revision = 128;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -65,12 +65,7 @@ font.load().then(() => {
     let recording_buffer = '';
     let recording = false;
     let recording_header = {
-        "version": 2,
-        "width": 80,
-        "height": 24,
-        "timestamp": 0,
-        "duration": 0,
-        "title": "xtermia recording"
+        "version": 2, "width": 80, "height": 24, "timestamp": 0, "duration": 0, "title": "xtermia recording"
     };
     wrapWrite('\x1b[1;97mxtermia\x1b[0m terminal emulator (made with xterm.js)\n');
     wrapWrite('revision \x1b[1;97m' + revision + '\x1b[0m\n');
@@ -886,42 +881,88 @@ font.load().then(() => {
     }
 
     function wrap(input) {
-        // wrap input to width, ignoring control codes
-        const width = map_enabled ? term.cols - map_max_width - 1 : term.cols;
-        let output = '';
-        let len = 0;
-        let is_ansi = false;
-        for (let i = 0; i < input.length; i++) {
-            if (is_ansi) {
-                if (input[i] === 'm' || input[i] === 'K') {
-                    output += input[i];
-                    is_ansi = false;
-                } else {
-                    output += input[i];
+        const maxWidth = map_enabled ? term.cols - map_max_width - 1 : term.cols;
+        const resetCode = '\x1b[0m';
+        const lines = input.split('\n');
+        const wrappedLines = [];
+
+        for (const line of lines) {
+            let currentLine = '';
+            let visibleLength = 0;
+            let lastColorCode = '';
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '\x1b') {
+                    let escapeSequence = char;
+                    let j = i + 1;
+                    while (j < line.length && line[j] !== 'm') {
+                        escapeSequence += line[j];
+                        j++;
+                    }
+                    escapeSequence += 'm';
+                    i = j;
+                    currentLine += escapeSequence;
+                    if (/^\x1b\[(38;5;\d+|48;5;\d+|38;2;\d+;\d+;\d+|48;2;\d+;\d+;\d+|3[0-79]|4[0-79]|9[0-7]|10[0-7])(?:;[0-9]+)*m/.test(escapeSequence)) {
+                        lastColorCode = escapeSequence;
+                    } else if (escapeSequence === resetCode) {
+                        lastColorCode = '';
+                    }
+                    continue;
                 }
-            } else {
-                if (input[i] === '\x1b') {
-                    output += '\x1b';
-                    is_ansi = true;
-                } else {
-                    if (input[i] === '\r' || input[i] === '\n') {
-                        output += input[i];
-                        len = 0;
-                    } else {
-                        if (len === width) {
-                            output += '\n';
-                            len = 0;
-                            while (input[i] === ' ') { // remove leading spaces
-                                i += 1;
+                currentLine += char;
+                visibleLength++;
+                if (visibleLength >= maxWidth) {
+                    let wrapIndex = -1;
+                    // Find last space within the *visible* width
+                    for (let k = currentLine.length - 1; k >= 0; k--) {
+                        if (currentLine[k] === ' ' && removeAnsi(currentLine.substring(0, k + 1)).length <= maxWidth) {
+                            wrapIndex = k;
+                            break;
+                        }
+                    }
+                    if (wrapIndex === -1) {
+                        wrapIndex = currentLine.length - 1;
+                        while (wrapIndex >= 0 && removeAnsi(currentLine.substring(0, wrapIndex)).length > maxWidth) {
+                            wrapIndex--;
+                        }
+                        if (wrapIndex < 0) {
+                            wrapIndex = currentLine.length - 1;
+                            while (removeAnsi(currentLine.substring(0, wrapIndex + 1)).length > maxWidth) {
+                                let char = currentLine[wrapIndex];
+                                if (char === '\x1b') {
+                                    let seq = '';
+                                    let k = wrapIndex;
+                                    while (k < currentLine.length && currentLine[k] !== 'm') {
+                                        seq += currentLine[k];
+                                        k++;
+                                    }
+                                    seq += 'm';
+                                    wrapIndex -= seq.length;
+
+                                } else {
+                                    wrapIndex--;
+                                }
                             }
                         }
-                        output += input[i];
-                        len += 1;
                     }
+                    let wrappedPart = currentLine.substring(0, wrapIndex + 1);
+                    if (lastColorCode) {
+                        wrappedPart += resetCode;
+                    }
+                    wrappedLines.push(wrappedPart);
+
+                    let remainingPart = currentLine.substring(wrapIndex + 1);
+                    currentLine = (lastColorCode ? lastColorCode : '') + remainingPart;
+                    visibleLength = removeAnsi(currentLine).length;
                 }
             }
+            wrappedLines.push(currentLine);
         }
-        return output;
+        return wrappedLines.join('\n');
+    }
+
+    function removeAnsi(str) {
+        return str.replace(/\x1b\[[0-9;]*m/g, '');
     }
 
 // term.onWriteParsed(e => onWriteParsed(e));
