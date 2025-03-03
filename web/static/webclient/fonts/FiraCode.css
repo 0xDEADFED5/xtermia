@@ -1,7 +1,6 @@
 @font-face {
 	font-family: 'Fira Code';
-	src: url('/static/webclient/fonts/FiraCode-VariableFont_wght.ttf') format('truetype');
+	src: url('/static/webclient/fonts/FiraCode-Regular.ttf') format('truetype');
 	font-weight: normal;
 	font-style: normal;
-	font-variation-settings: 'wght' 400;
 }

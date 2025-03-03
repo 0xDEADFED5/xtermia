@@ -49,7 +49,7 @@ Look at [characters.py](/typeclasses/characters.py) for command completion and m
 - addon-fit.js = npm install @xterm/addon-fit@beta
 - addon-unicode11.js = npm install @xterm/addon-unicode11@beta
 - addon-webgl.js = npm install @xterm/addon-webgl@beta
-- FiraCode-VariableFont_wght.ttf = https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
+- FiraCode = https://github.com/tonsky/FiraCode
 - webclient.py = https://github.com/evennia/evennia/blob/main/evennia/server/portal/webclient.py
 - xterm.css = npm install @xterm/xterm@beta
 - xterm.js = ""
