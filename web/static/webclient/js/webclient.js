@@ -1,4 +1,4 @@
-const revision = 130;
+const revision = 131;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -1131,7 +1131,7 @@ font.load().then(() => {
         if (map_enabled) {
             update += clearMap() + wrap(input) + reset + writeMap();
         } else {
-            update += input + reset;
+            update += wrap(input) + reset;
         }
         update += prompt;
         if (command.length > 0 && completion.length === 0) {
