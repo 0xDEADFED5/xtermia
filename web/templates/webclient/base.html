@@ -27,15 +27,14 @@
     <meta http-equiv="content-type", content="application/xhtml+xml; charset=UTF-8" />
     <meta name="author" content="Evennia" />
     <link rel="icon" type="image/x-icon" href="/static/website/images/evennia_logo.png" />
-    <link rel="stylesheet" type="text/css" href="{% static "webclient/fonts/FiraCode.css" %}?{{client_css_version}}">
+    <link
+          rel="preload"
+          href="../static/webclient/fonts/FiraCode-Regular.ttf"
+          as="font"
+          type="font/ttf"
+          crossorigin />
+    <link rel="preload stylesheet" href="{% static "webclient/fonts/FiraCode.css" %}?{{client_css_version}}" as="style" type="text/css" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="{% static "webclient/css/xterm.css" %}?{{client_css_version}}">
-{#    <link rel="stylesheet" type="text/css" href="{% static "webclient/css/normalize.css" %}?{{client_css_version}}">#}
-      <link
-              rel="preload"
-              href="../static/webclient/fonts/FiraCode-VariableFont_wght.ttf"
-              as="font"
-              type="font/ttf"
-              crossorigin />
     <script language="javascript" type="text/javascript">
         {% if websocket_enabled %}
             const wsactive = true;
