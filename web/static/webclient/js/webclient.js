@@ -1,4 +1,4 @@
-const revision = 132;
+const revision = 133;
 const font = new FontFaceObserver('Fira Code');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -911,7 +911,7 @@ font.load().then(() => {
                 }
                 currentLine += char;
                 visibleLength++;
-                if (visibleLength >= maxWidth - 1) {
+                if (visibleLength > maxWidth) {
                     let wrapIndex = -1;
                     // Find last space within the *visible* width
                     for (let k = currentLine.length - 1; k >= 0; k--) {
