@@ -1,5 +1,5 @@
-const revision = 135;
-const font = new FontFaceObserver('Fira Code');
+const revision = 137;
+const font = new FontFaceObserver('Fira Custom');
 font.load().then(() => {
     console.log('Font loaded.');
     // try to get options from localstorage, otherwise set the defaults
@@ -46,7 +46,7 @@ font.load().then(() => {
     } else {
         autosave_setting = autosave_setting === 'true';
     }
-    const font_family = localStorage.getItem('font') || '"Fira Code", Menlo, monospace';
+    const font_family = localStorage.getItem('font') || '"Fira Custom", Menlo, monospace';
     const term = new Terminal({
         convertEol: true,
         allowProposedApi: true,
@@ -74,7 +74,7 @@ font.load().then(() => {
     const commands = new Map();
     commands.set(':help', [help, ':help = This lists all available commands']);
     commands.set(':fontsize', [fontsize, ':fontsize [size] = Change font size to [size]. Default = 19']);
-    commands.set(':fontfamily', [fontfamily, ':fontfamily [font] = Change font family. Default = "Fira Code"']);
+    commands.set(':fontfamily', [fontfamily, ':fontfamily [font] = Change font family. Default = "Fira Custom"']);
     commands.set(':contrast', [contrast, ':contrast [ratio] = Change minimum contrast ratio, 21 = black and white. Default = 1']);
     commands.set(':reader', [reader, ':reader = Toggle screenreader mode for NVDA or VoiceOver. Default = off']);
     commands.set(':cursorstyle', [cursorstyle, ':cursorstyle [block,underline,bar] = Change cursor style. Default = block']);
