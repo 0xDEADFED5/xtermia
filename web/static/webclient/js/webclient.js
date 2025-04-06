@@ -1,4 +1,4 @@
-const revision = 137;
+const revision = 138;
 const font = new FontFaceObserver('Fira Custom');
 font.load().then(() => {
     console.log('Font loaded.');
@@ -886,10 +886,15 @@ font.load().then(() => {
         const lines = input.split('\n');
         const wrappedLines = [];
 
+        function removeAnsi(str) {
+            return str.replace(/\x1b\[[0-9;]*m/g, '');
+        }
+
         for (const line of lines) {
             let currentLine = '';
             let visibleLength = 0;
-            let lastColorCode = '';
+            let activeCodes = ''; // Stores the *active* sequence
+
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '\x1b') {
@@ -899,13 +904,19 @@ font.load().then(() => {
                         escapeSequence += line[j];
                         j++;
                     }
-                    escapeSequence += 'm';
-                    i = j;
+                    if (j < line.length && line[j] === 'm') {
+                        escapeSequence += 'm';
+                        i = j;
+                    } else {
+                        currentLine += escapeSequence;
+                        i = j - 1;
+                        continue;
+                    }
                     currentLine += escapeSequence;
-                    if (/^\x1b\[(38;5;\d+|48;5;\d+|38;2;\d+;\d+;\d+|48;2;\d+;\d+;\d+|3[0-79]|4[0-79]|9[0-7]|10[0-7])(?:;[0-9]+)*m/.test(escapeSequence)) {
-                        lastColorCode = escapeSequence;
-                    } else if (escapeSequence === resetCode) {
-                        lastColorCode = '';
+                    if (escapeSequence === resetCode) {
+                        activeCodes = '';
+                    } else if (escapeSequence.endsWith('m')) {
+                        activeCodes += escapeSequence;
                     }
                     continue;
                 }
@@ -913,56 +924,68 @@ font.load().then(() => {
                 visibleLength++;
                 if (visibleLength > maxWidth) {
                     let wrapIndex = -1;
-                    // Find last space within the *visible* width
-                    for (let k = currentLine.length - 1; k >= 0; k--) {
-                        if (currentLine[k] === ' ' && removeAnsi(currentLine.substring(0, k + 1)).length <= maxWidth) {
-                            wrapIndex = k;
+                    let searchLimit = currentLine.length - 1;
+                    for (let k = searchLimit; k >= 0; k--) {
+                        if (currentLine[k] === ' ' && removeAnsi(currentLine.substring(0, k)).length <= maxWidth) {
+                            wrapIndex = k; // Found the last suitable space
                             break;
                         }
                     }
                     if (wrapIndex === -1) {
-                        wrapIndex = currentLine.length - 1;
-                        while (wrapIndex >= 0 && removeAnsi(currentLine.substring(0, wrapIndex)).length > maxWidth) {
-                            wrapIndex--;
-                        }
-                        if (wrapIndex < 0) {
-                            wrapIndex = currentLine.length - 1;
-                            while (removeAnsi(currentLine.substring(0, wrapIndex + 1)).length > maxWidth) {
-                                let char = currentLine[wrapIndex];
-                                if (char === '\x1b') {
-                                    let seq = '';
-                                    let k = wrapIndex;
-                                    while (k < currentLine.length && currentLine[k] !== 'm') {
-                                        seq += currentLine[k];
-                                        k++;
-                                    }
-                                    seq += 'm';
-                                    wrapIndex -= seq.length;
-
+                        let currentVisible = 0;
+                        let hardBreakIndex = -1;
+                        for (let k = 0; k < currentLine.length; k++) {
+                            let checkChar = currentLine[k];
+                            if (checkChar === '\x1b') {
+                                let mPos = currentLine.indexOf('m', k);
+                                if (mPos !== -1) {
+                                    k = mPos; // Skip escape sequence
                                 } else {
-                                    wrapIndex--;
+                                    // Malformed sequence, likely break before it
+                                    hardBreakIndex = k > 0 ? k - 1 : 0;
+                                    break;
+                                }
+                            } else {
+                                currentVisible++;
+                                if (currentVisible > maxWidth) {
+                                    hardBreakIndex = k - 1;
+                                    break;
                                 }
                             }
                         }
+                        if (hardBreakIndex === -1) {
+                            hardBreakIndex = currentLine.length - 2;
+                        }
+                        wrapIndex = hardBreakIndex >= 0 ? hardBreakIndex : 0; // Ensure wrapIndex is non-negative
                     }
                     let wrappedPart = currentLine.substring(0, wrapIndex + 1);
-                    if (lastColorCode) {
-                        wrappedPart += resetCode;
+                    let remainingPart = currentLine.substring(wrapIndex + 1);
+                    if (currentLine[wrapIndex] === ' ') {
+                        wrappedPart = currentLine.substring(0, wrapIndex);
+                        if (remainingPart.startsWith(' ')) {
+                            remainingPart = remainingPart.substring(1);
+                        }
+                    } else if (wrappedPart.endsWith(' ')) {
+                        wrappedPart = wrappedPart.slice(0, -1);
+                        if (remainingPart.startsWith(' ')) {
+                            remainingPart = remainingPart.substring(1);
+                        }
+                    } else if (remainingPart.startsWith(' ')) {
+                        remainingPart = remainingPart.substring(1);
+                    }
+                    if (activeCodes) {
+                        if (wrappedPart.length > 0) {
+                            wrappedPart += resetCode;
+                        }
                     }
                     wrappedLines.push(wrappedPart);
-
-                    let remainingPart = currentLine.substring(wrapIndex + 1);
-                    currentLine = (lastColorCode ? lastColorCode : '') + remainingPart;
+                    currentLine = (activeCodes ? activeCodes : '') + remainingPart;
                     visibleLength = removeAnsi(currentLine).length;
                 }
             }
             wrappedLines.push(currentLine);
         }
         return wrappedLines.join('\n');
-    }
-
-    function removeAnsi(str) {
-        return str.replace(/\x1b\[[0-9;]*m/g, '');
     }
 
 // term.onWriteParsed(e => onWriteParsed(e));
